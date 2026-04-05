@@ -1,0 +1,15 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="Yokara iOS locator audit (USB)">
+
+    <listeners>
+        <listener class-name="io.qameta.allure.testng.AllureTestNg"/>
+        <listener class-name="listeners.AllureListener"/>
+    </listeners>
+
+    <test name="iOS-audit">
+        <parameter name="suitePlatform" value="ios"/>
+        <classes>
+            <class name="tests.audit.IosUiLocatorAuditTest"/>
+        </classes>
+    </test>
+</suite>
