@@ -52,4 +52,5 @@ allure-results-by-device/
 ### Temporary Logs & Dumps ###
 *.txt
 *.log
+*.bundle
 room_actual_dump.xml
