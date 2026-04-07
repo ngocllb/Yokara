@@ -7,6 +7,7 @@ pipeline {
     }
 
     environment {
+        REPO_URL = 'https://github.com/ngocllb/Yokara.git'
         REPO_BRANCH = 'main'
         COMMON_PATH = '/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin'
     }
@@ -14,10 +15,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                checkout scmGit(
-                    branches: [[name: "*/${REPO_BRANCH}"]],
-                    userRemoteConfigs: scm.userRemoteConfigs
-                )
+                git branch: "${REPO_BRANCH}", url: "${REPO_URL}"
                 stash name: 'source', includes: '**/*', useDefaultExcludes: false
             }
         }
