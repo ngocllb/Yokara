@@ -25,8 +25,6 @@ pipeline {
                     extensions: [[$class: 'CloneOption', depth: 1, noTags: true, shallow: true]],
                     userRemoteConfigs: [[url: 'https://github.com/ngocllb/Yokara']]
                 )
-                // Stash source để các nhánh parallel chạy trên workspace tách biệt
-                stash name: 'repo-source', includes: '**/*', useDefaultExcludes: false
             }
         }
 
@@ -34,7 +32,6 @@ pipeline {
             steps {
                 script {
                     echo "Checking for physically connected devices..."
-                    sh "rm -rf allure-merge && mkdir -p allure-merge"
                     
                     // Run python script to discover platforms and udids
                     def devicesStr = sh(script: "python3 scripts/get_jenkins_devices.py", returnStdout: true).trim()
@@ -56,38 +53,26 @@ pipeline {
                         def platform = parts[0]
                         def udid = parts[1]
                         def shortUdid = udid.size() > 8 ? udid.substring(udid.size() - 8) : udid
-                        def branchWs = "${env.WORKSPACE}/.jenkins-ws/${platform}-${shortUdid}"
-                        def mergeDir = "${env.WORKSPACE}/allure-merge/${platform}-${shortUdid}"
                         
                         parallelStages["Test ${platform.toUpperCase()}-${shortUdid}"] = {
                             stage("Run on ${udid}") {
-                                ws(branchWs) {
-                                    deleteDir()
-                                    unstash 'repo-source'
-                                    try {
-                                        // Make sure results folder is clean in isolated workspace
-                                        sh "rm -rf target/allure-results-${udid}"
-
-                                        // Execute Maven test bound to this specific device
-                                        sh """
-                                            mvn clean test -DsuiteXmlFile=\"testng-jenkins.xml\" \
-                                            -Dplatform=${platform} \
-                                            -D${platform}.udid=\"${udid}\" \
-                                            -Dallure.results.directory=target/allure-results-${udid}
-                                        """
-                                    } finally {
-                                        // Create environment.properties for Allure to distinguish the devices in the final report
-                                        sh """
-                                            mkdir -p target/allure-results-${udid}
-                                            echo "Platform=${platform}" > target/allure-results-${udid}/environment.properties
-                                            echo "DeviceUDID=${udid}" >> target/allure-results-${udid}/environment.properties
-
-                                            mkdir -p "${mergeDir}"
-                                            if [ -d "target/allure-results-${udid}" ]; then
-                                              cp -R "target/allure-results-${udid}/." "${mergeDir}/" || true
-                                            fi
-                                        """
-                                    }
+                                try {
+                                    // Make sure results folder is clean
+                                    sh "rm -rf target/allure-results-${udid}"
+                                    
+                                    // Execute Maven test bound to this specific device
+                                    sh """
+                                        mvn clean test -DsuiteXmlFile="testng-jenkins.xml" \
+                                        -Dplatform=${platform} \
+                                        -D${platform}.udid="${udid}" \
+                                        -Dallure.results.directory=target/allure-results-${udid}
+                                    """
+                                } finally {
+                                    // Create environment.properties for Allure to distinguish the devices in the final report
+                                    sh """
+                                        echo "Platform=${platform}" > target/allure-results-${udid}/environment.properties
+                                        echo "DeviceUDID=${udid}" >> target/allure-results-${udid}/environment.properties
+                                    """
                                 }
                             }
                         }
@@ -102,13 +87,14 @@ pipeline {
 
     post {
         always {
-            // Aggregate all the separate allure-results directories copied from isolated branch workspaces.
+            // Aggregate all the separate allure-results directories into one comprehensive Allure report
+            // The Jenkins Allure Plugin will generate a single link containing data from all devices.
             allure([
                 includeProperties: false, 
                 jdk: '', 
                 properties: [], 
                 reportBuildPolicy: 'ALWAYS', 
-                results: [[path: 'allure-merge/*']]
+                results: [[path: 'target/allure-results-*']]
             ])
         }
     }
