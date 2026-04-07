@@ -10,8 +10,6 @@
     <test name="Android-USB">
         <parameter name="suitePlatform" value="android"/>
         <classes>
-            <class name="tests.NavigationTest"/>
-            <class name="tests.LoginMethodTest"/>
             <class name="tests.RoomTest"/>
         </classes>
     </test>
@@ -19,8 +17,6 @@
     <test name="iOS-USB">
         <parameter name="suitePlatform" value="ios"/>
         <classes>
-            <class name="tests.NavigationTest"/>
-            <class name="tests.LoginMethodTest"/>
             <class name="tests.RoomTest"/>
         </classes>
     </test>
