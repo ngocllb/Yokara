@@ -30,20 +30,23 @@ pipeline {
                     
                     // Run python script to discover platforms and udids
                     def devicesStr = sh(script: "python3 scripts/get_jenkins_devices.py", returnStdout: true).trim()
-                    def devices = readJSON text: devicesStr
                     
-                    if (devices.size() == 0) {
+                    if (!devicesStr) {
                         error("No physically connected devices found via ADB/idevice_id!")
                     }
                     
-                    echo "Detected ${devices.size()} devices: ${devices}"
+                    def lines = devicesStr.split('\n')
+                    echo "Detected ${lines.size()} devices: \n${devicesStr}"
                     
                     def parallelStages = [:]
                     
-                    for (int i = 0; i < devices.size(); i++) {
-                        def device = devices[i]
-                        def platform = device.platform
-                        def udid = device.udid
+                    for (int i = 0; i < lines.size(); i++) {
+                        def line = lines[i].trim()
+                        if (!line || !line.contains('|')) continue
+                        
+                        def parts = line.split('\\|')
+                        def platform = parts[0]
+                        def udid = parts[1]
                         def shortUdid = udid.size() > 8 ? udid.substring(udid.size() - 8) : udid
                         
                         parallelStages["Test ${platform.toUpperCase()}-${shortUdid}"] = {

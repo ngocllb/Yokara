@@ -49,10 +49,10 @@ def main():
     
     all_devices = android_devices + ios_devices
     
-    # We output a clean JSON that a Jenkins pipeline can easily execute: 
-    # def devicesStr = sh(script: "python3 scripts/get_jenkins_devices.py", returnStdout: true).trim()
-    # def devices = readJSON text: devicesStr
-    print(json.dumps(all_devices))
+    # We output clean plain-text that Jenkins can parse natively without the readJSON plugin.
+    # Format: platform|udid
+    for device in all_devices:
+        print(f"{device['platform']}|{device['udid']}")
 
 if __name__ == '__main__':
     main()
