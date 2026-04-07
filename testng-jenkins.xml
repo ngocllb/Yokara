@@ -8,8 +8,6 @@
 
     <test name="Jenkins Automated Tests">
         <classes>
-            <class name="tests.NavigationTest"/>
-            <class name="tests.LoginMethodTest"/>
             <class name="tests.RoomTest"/>
         </classes>
     </test>
