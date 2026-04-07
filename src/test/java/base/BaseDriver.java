@@ -3,10 +3,12 @@ package base;
 import core.ConfigManager;
 import core.DeviceManager;
 import core.DriverFactory;
+import flows.AuthFlow;
 import io.appium.java_client.AppiumBy;
 import io.appium.java_client.AppiumDriver;
 import io.appium.java_client.InteractsWithApps;
 import io.appium.java_client.ios.IOSDriver;
+import io.qameta.allure.Allure;
 import org.openqa.selenium.By;
 import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.support.ui.WebDriverWait;
@@ -15,8 +17,6 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Optional;
 import org.testng.annotations.Parameters;
-import flows.AuthFlow;
-import io.qameta.allure.Allure;
 import utils.StepContext;
 
 import java.time.Duration;
@@ -24,9 +24,6 @@ import java.util.List;
 
 public class BaseDriver {
 
-    /**
-     * Mỗi luồng TestNG (parallel tests) có driver riêng — tránh ghi đè khi chạy Android + iOS cùng lúc.
-     */
     private static final ThreadLocal<AppiumDriver> DRIVER = new ThreadLocal<>();
 
     protected AppiumDriver driver;
@@ -34,28 +31,64 @@ public class BaseDriver {
     protected AuthFlow auth;
 
     @BeforeMethod(alwaysRun = true)
-    @Parameters({ "suitePlatform", "suiteUdid", "suiteDeviceLabel", "suiteDeviceFolder" })
-    public void setup(@Optional String suitePlatform, @Optional String suiteUdid,
-                      @Optional String suiteDeviceLabel, @Optional String suiteDeviceFolder) {
+    @Parameters({"suitePlatform", "suiteUdid", "suiteDeviceLabel", "suiteDeviceFolder"})
+    public void setup(@Optional String suitePlatform,
+                      @Optional String suiteUdid,
+                      @Optional String suiteDeviceLabel,
+                      @Optional String suiteDeviceFolder) {
 
-        // Pre-check: bỏ qua nếu platform được chỉ định nhưng không có thiết bị tương ứng
-        if ("android".equalsIgnoreCase(suitePlatform)) {
+        String runPlatform = normalize(System.getProperty("platform"));
+        String runAndroidUdid = normalize(System.getProperty("android.udid"));
+        String runIosUdid = normalize(System.getProperty("ios.udid"));
+
+        String requestedPlatform = normalize(suitePlatform);
+        String requestedUdid = normalize(suiteUdid);
+
+        // Nếu test invocation không truyền platform, dùng platform của branch hiện tại
+        if (requestedPlatform == null) {
+            requestedPlatform = runPlatform;
+        }
+
+        // Nếu branch hiện tại đã được khóa platform, skip mọi invocation khác platform
+        if (runPlatform != null && requestedPlatform != null && !runPlatform.equals(requestedPlatform)) {
+            throw new SkipException(String.format(
+                    "[Skip] Invocation platform=%s không thuộc branch hiện tại platform=%s",
+                    requestedPlatform, runPlatform
+            ));
+        }
+
+        // Nếu invocation không truyền UDID, lấy từ system property đúng branch
+        if (requestedUdid == null) {
+            if ("android".equals(requestedPlatform)) {
+                requestedUdid = runAndroidUdid;
+            } else if ("ios".equals(requestedPlatform)) {
+                requestedUdid = runIosUdid;
+            }
+        }
+
+        if (requestedPlatform == null) {
+            throw new SkipException("[Skip] Không xác định được platform cho test invocation hiện tại.");
+        }
+
+        // Pre-check online device theo platform đã khóa
+        if ("android".equals(requestedPlatform)) {
             List<String> online = DeviceManager.getAndroidPhysicalDevices();
             if (online.isEmpty()) {
                 throw new SkipException("[Skip] Không có thiết bị Android nào kết nối – bỏ qua test này.");
             }
-            if (suiteUdid != null && !suiteUdid.isBlank() && !online.contains(suiteUdid.trim())) {
-                throw new SkipException("[Skip] Android UDID không còn online: " + suiteUdid);
+            if (requestedUdid != null && !online.contains(requestedUdid)) {
+                throw new SkipException("[Skip] Android UDID không còn online: " + requestedUdid);
             }
-        }
-        if ("ios".equalsIgnoreCase(suitePlatform)) {
+        } else if ("ios".equals(requestedPlatform)) {
             List<String> online = DeviceManager.getIOSDevices();
             if (online.isEmpty()) {
                 throw new SkipException("[Skip] Không có thiết bị iOS nào kết nối – bỏ qua test này.");
             }
-            if (suiteUdid != null && !suiteUdid.isBlank() && !online.contains(suiteUdid.trim())) {
-                throw new SkipException("[Skip] iOS UDID không còn online: " + suiteUdid);
+            if (requestedUdid != null && !online.contains(requestedUdid)) {
+                throw new SkipException("[Skip] iOS UDID không còn online: " + requestedUdid);
             }
+        } else {
+            throw new SkipException("[Skip] Platform không hợp lệ: " + requestedPlatform);
         }
 
         if (suiteDeviceFolder != null && !suiteDeviceFolder.isBlank()) {
@@ -65,8 +98,13 @@ public class BaseDriver {
             Allure.parameter("Thiết bị", suiteDeviceLabel.trim());
         }
 
+        Allure.parameter("Run Platform", requestedPlatform);
+        if (requestedUdid != null) {
+            Allure.parameter("Run UDID", requestedUdid);
+        }
+
         try {
-            driver = DriverFactory.createDriver(suitePlatform, suiteUdid);
+            driver = DriverFactory.createDriver(requestedPlatform, requestedUdid);
             DRIVER.set(driver);
         } catch (RuntimeException e) {
             String msg = e.getMessage() != null ? e.getMessage() : "";
@@ -90,26 +128,27 @@ public class BaseDriver {
         }
 
         wait = new WebDriverWait(driver, Duration.ofSeconds(15));
-
         auth = new AuthFlow(driver);
 
-        // Xử lý các popup khi vừa mở app (EULA, Permission)
         new BaseScr(driver).handleStartupPopups();
         handleIosLaunchBannerIfPresent();
         ensureIosMainTabBarVisible();
     }
 
-    /**
-     * iOS + {@code noReset=true} / {@code forceAppLaunch=false}: session đôi khi mở không phải màn 5 tab
-     * → không tìm thấy {@code accessibilityId("Tôi")}. Thử terminate + activate một lần để về root có bottom bar.
-     */
+    private String normalize(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed.toLowerCase();
+    }
+
     private void ensureIosMainTabBarVisible() {
         if (!(driver instanceof IOSDriver)) {
             return;
         }
         By trangChu = AppiumBy.accessibilityId("Trang chủ");
         By toi = AppiumBy.accessibilityId("Tôi");
-        // iOS mới / sau cold start: tree + animation chậm hơn — tránh race với test đầu tiên
         WebDriverWait tabWait = new WebDriverWait(driver, Duration.ofSeconds(22));
         try {
             tabWait.until(d -> !d.findElements(trangChu).isEmpty() || !d.findElements(toi).isEmpty());
@@ -122,8 +161,6 @@ public class BaseDriver {
             String bid = ConfigManager.getRequired("ios.bundleId");
             InteractsWithApps app = (InteractsWithApps) driver;
             app.terminateApp(bid);
-            // Thread.sleep(2000) removed to follow "No sleep" rule. 
-            // Appium's activateApp usually handles the restart well.
             app.activateApp(bid);
             new BaseScr(driver).handleStartupPopups();
             handleIosLaunchBannerIfPresent();
@@ -136,10 +173,6 @@ public class BaseDriver {
         }
     }
 
-    /**
-     * iOS: sau launch có thể có banner quảng cáo full màn với nút "Bỏ qua" (Image accessibility).
-     * Nếu có thì bấm bỏ qua trước khi kiểm tra tab bar để tránh kẹt ở overlay.
-     */
     private void handleIosLaunchBannerIfPresent() {
         if (!(driver instanceof IOSDriver)) {
             return;
@@ -154,12 +187,12 @@ public class BaseDriver {
             try {
                 skip.click();
             } catch (Exception clickEx) {
-                // iOS image đôi khi click() không ăn, fallback theo elementId.
-                driver.executeScript("mobile: clickGesture",
-                        java.util.Map.of("elementId", ((org.openqa.selenium.remote.RemoteWebElement) skip).getId()));
+                driver.executeScript(
+                        "mobile: clickGesture",
+                        java.util.Map.of("elementId", ((org.openqa.selenium.remote.RemoteWebElement) skip).getId())
+                );
             }
             System.out.println("[BaseDriver] iOS: đã dismiss banner bằng nút 'Bỏ qua'");
-            // Đợi nhẹ cho overlay biến mất / về màn Hát.
             new WebDriverWait(driver, Duration.ofSeconds(8)).until(d ->
                     d.findElements(btnBoQua).isEmpty()
                             || !d.findElements(AppiumBy.accessibilityId("Bài hát")).isEmpty()
@@ -169,32 +202,25 @@ public class BaseDriver {
         }
     }
 
-    /** Sau khi có Trang chủ/Tôi — chờ thêm label tab Trực tuyến xuất hiện trong tree (giảm flake sau activate). */
     private void waitIosTabBarSettled() {
         try {
             new WebDriverWait(driver, Duration.ofSeconds(15)).until(d ->
                     !d.findElements(AppiumBy.xpath("//*[contains(@name,'Trực tuyến')]")).isEmpty()
                             || !d.findElements(AppiumBy.accessibilityId("Trực tuyến")).isEmpty());
         } catch (TimeoutException ignored) {
-            // vẫn cho test chạy — một số build chỉ expose icon không có chuỗi này
         }
     }
 
     public static AppiumDriver getDriver() {
         AppiumDriver d = DRIVER.get();
         if (d == null) {
-            throw new IllegalStateException("Không có AppiumDriver trong luồng hiện tại (chưa @BeforeMethod hoặc đã teardown).");
+            throw new IllegalStateException("Không có AppiumDriver trong luồng hiện tại.");
         }
         return d;
     }
 
-    /**
-     * Screenshot khi fail: {@link listeners.AllureListener} + {@link utils.StepUtils}.
-     * Ở đây chỉ đóng driver và xóa ngữ cảnh bước.
-     */
     @AfterMethod(alwaysRun = true)
     public void teardown() {
-
         try {
             if (driver != null) {
                 driver.quit();
