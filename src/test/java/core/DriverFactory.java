@@ -85,7 +85,7 @@ public class DriverFactory {
         options.setUdid(udid);
         options.setAppPackage(ConfigManager.getRequired("android.appPackage"));
         options.setAppActivity(ConfigManager.getRequired("android.appActivity"));
-        options.setNoReset(false);
+        options.setNoReset(true);
 
         // Ổn định trên Android 13/14
         options.setAutoGrantPermissions(true);
