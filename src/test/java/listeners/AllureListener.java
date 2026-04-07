@@ -1,107 +1,203 @@
 package listeners;
 
-import base.BaseDriver;
-import io.appium.java_client.AppiumDriver;
-import io.appium.java_client.android.AndroidDriver;
-import io.qameta.allure.Attachment;
-import org.openqa.selenium.OutputType;
-import org.openqa.selenium.TakesScreenshot;
+import io.qameta.allure.Allure;
+import io.qameta.allure.AllureLifecycle;
+import io.qameta.allure.model.Parameter;
+import io.qameta.allure.model.Status;
+import io.qameta.allure.model.Label;
+import org.testng.ITestContext;
 import org.testng.ITestListener;
 import org.testng.ITestResult;
-import utils.StepContext;
+
+import java.io.PrintWriter;
+import java.io.StringWriter;
 
 public class AllureListener implements ITestListener {
 
-    @Override
-    public void onTestFailure(ITestResult result) {
-        String stepName = StepContext.getStep();
-        if (stepName == null || stepName.isBlank()) {
-            stepName = "Unknown Step";
-        }
+    private static final ThreadLocal<Boolean> METADATA_ATTACHED = ThreadLocal.withInitial(() -> false);
 
-        AppiumDriver driver = BaseDriver.getDriver();
-        try {
-            captureScreenshot(stepName, driver);
-            attachFailureMeta(result, driver, stepName);
-            attachLocatorDebugContext(driver);
-        } finally {
-            StepContext.clear();
-        }
+    @Override
+    public void onStart(ITestContext context) {
+        // no-op
+    }
+
+    @Override
+    public void onFinish(ITestContext context) {
+        // no-op
+    }
+
+    @Override
+    public void onTestStart(ITestResult result) {
+        METADATA_ATTACHED.set(false);
+        attachExecutionMetadata(result);
     }
 
     @Override
     public void onTestSuccess(ITestResult result) {
-        StepContext.clear();
+        attachExecutionMetadata(result);
+    }
+
+    @Override
+    public void onTestFailure(ITestResult result) {
+        attachExecutionMetadata(result);
+
+        Throwable throwable = result.getThrowable();
+        if (throwable != null) {
+            Allure.addAttachment("Failure Message", throwable.toString());
+            Allure.addAttachment("Failure Stacktrace", asStackTrace(throwable));
+        }
     }
 
     @Override
     public void onTestSkipped(ITestResult result) {
-        StepContext.clear();
-    }
+        attachExecutionMetadata(result);
 
-    @Attachment(value = "Failure Screenshot - {stepName}", type = "image/png")
-    public byte[] captureScreenshot(String stepName, AppiumDriver driver) {
-        try {
-            if (driver == null) return new byte[0];
-            return ((TakesScreenshot) driver).getScreenshotAs(OutputType.BYTES);
-        } catch (Exception e) {
-            return new byte[0];
+        Throwable throwable = result.getThrowable();
+        if (throwable != null) {
+            Allure.addAttachment("Skip Reason", throwable.toString());
         }
     }
 
-    @Attachment(value = "Failure Meta", type = "text/plain")
-    public String attachFailureMeta(ITestResult result, AppiumDriver driver, String stepName) {
-        try {
-            String threadId = String.valueOf(Thread.currentThread().getId());
-            String sessionId = driver != null && driver.getSessionId() != null
-                    ? driver.getSessionId().toString()
-                    : "null";
-
-            String platform = driver != null && driver.getCapabilities().getPlatformName() != null
-                    ? driver.getCapabilities().getPlatformName().toString()
-                    : "unknown";
-
-            Object deviceName = driver != null ? driver.getCapabilities().getCapability("appium:deviceName") : null;
-            Object udid = driver != null ? driver.getCapabilities().getCapability("appium:udid") : null;
-
-            return "test=" + result.getMethod().getMethodName() + "\n"
-                    + "class=" + result.getTestClass().getName() + "\n"
-                    + "step=" + stepName + "\n"
-                    + "threadId=" + threadId + "\n"
-                    + "sessionId=" + sessionId + "\n"
-                    + "platform=" + platform + "\n"
-                    + "deviceName=" + deviceName + "\n"
-                    + "udid=" + udid;
-        } catch (Exception e) {
-            return "Không đính kèm meta: " + e.getMessage();
-        }
+    @Override
+    public void onTestFailedButWithinSuccessPercentage(ITestResult result) {
+        attachExecutionMetadata(result);
     }
 
-    /**
-     * Gợi ý mở lại đúng màn: capabilities + activity (Android) + page source (cắt bớt).
-     */
-    @Attachment(value = "Locator — màn hình & cây UI", type = "text/plain")
-    public String attachLocatorDebugContext(AppiumDriver d) {
+    @Override
+    public void onTestFailedWithTimeout(ITestResult result) {
+        onTestFailure(result);
+    }
+
+    private void attachExecutionMetadata(ITestResult result) {
+        if (Boolean.TRUE.equals(METADATA_ATTACHED.get())) {
+            return;
+        }
+
+        String platform = firstNonBlank(
+                System.getProperty("platform"),
+                parameter(result, "suitePlatform"),
+                "unknown"
+        ).toLowerCase();
+
+        String udid = "android".equals(platform)
+                ? firstNonBlank(System.getProperty("android.udid"), parameter(result, "suiteUdid"))
+                : firstNonBlank(System.getProperty("ios.udid"), parameter(result, "suiteUdid"));
+
+        String appiumServer = firstNonBlank(System.getProperty("appiumServer"), "unknown");
+
+        String deviceKey = buildDeviceKey(platform, udid);
+        String originalTestName = result.getMethod().getMethodName();
+        String displayName = originalTestName + " [" + deviceKey + "]";
+
+        AllureLifecycle lifecycle = Allure.getLifecycle();
+
         try {
-            if (d == null) {
-                return "Không đính kèm context: driver = null";
-            }
-            StringBuilder sb = new StringBuilder();
-            sb.append("Capabilities (rút gọn):\n").append(d.getCapabilities().asMap()).append("\n\n");
-            if (d instanceof AndroidDriver ad) {
-                try {
-                    sb.append("currentActivity: ").append(ad.currentActivity()).append("\n");
-                } catch (Exception ignored) {
+            lifecycle.updateTestCase(testResult -> {
+                testResult.setName(displayName);
+
+                upsertLabel(testResult, "platform", platform);
+                upsertLabel(testResult, "device", deviceKey);
+                upsertLabel(testResult, "framework", "testng");
+                upsertLabel(testResult, "host", safe(System.getProperty("user.name")));
+
+                upsertParameter(testResult, "platform", platform);
+                upsertParameter(testResult, "device", deviceKey);
+
+                if (udid != null && !udid.isBlank()) {
+                    upsertParameter(testResult, "udid", udid);
                 }
+                if (appiumServer != null && !appiumServer.isBlank()) {
+                    upsertParameter(testResult, "appiumServer", appiumServer);
+                }
+            });
+
+            Allure.parameter("platform", platform);
+            Allure.parameter("device", deviceKey);
+            if (udid != null && !udid.isBlank()) {
+                Allure.parameter("udid", udid);
             }
-            String ps = d.getPageSource();
-            if (ps.length() > 60_000) {
-                ps = ps.substring(0, 60_000) + "\n... [truncated]";
+            if (appiumServer != null && !appiumServer.isBlank()) {
+                Allure.parameter("appiumServer", appiumServer);
             }
-            sb.append("\n--- PAGE SOURCE ---\n").append(ps);
-            return sb.toString();
-        } catch (Exception e) {
-            return "Không đính kèm context (driver đã đóng?): " + e.getMessage();
+
+            METADATA_ATTACHED.set(true);
+        } catch (Exception ex) {
+            // Không để listener làm hỏng test run
+            System.out.println("[AllureListener] attachExecutionMetadata failed: " + ex.getMessage());
         }
+    }
+
+    private String parameter(ITestResult result, String key) {
+        if (result == null || result.getTestContext() == null) {
+            return null;
+        }
+        try {
+            return result.getTestContext().getCurrentXmlTest().getParameter(key);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private void upsertLabel(io.qameta.allure.model.TestResult testResult, String name, String value) {
+        if (value == null || value.isBlank()) {
+            return;
+        }
+
+        for (Label label : testResult.getLabels()) {
+            if (name.equals(label.getName())) {
+                label.setValue(value);
+                return;
+            }
+        }
+
+        testResult.getLabels().add(new Label().setName(name).setValue(value));
+    }
+
+    private void upsertParameter(io.qameta.allure.model.TestResult testResult, String name, String value) {
+        if (value == null || value.isBlank()) {
+            return;
+        }
+
+        for (Parameter p : testResult.getParameters()) {
+            if (name.equals(p.getName())) {
+                p.setValue(value);
+                return;
+            }
+        }
+
+        testResult.getParameters().add(new Parameter().setName(name).setValue(value));
+    }
+
+    private String buildDeviceKey(String platform, String udid) {
+        if (udid == null || udid.isBlank()) {
+            return platform;
+        }
+
+        String shortUdid = udid.length() > 8 ? udid.substring(udid.length() - 8) : udid;
+        return platform + "-" + shortUdid;
+    }
+
+    private String firstNonBlank(String... values) {
+        if (values == null) {
+            return null;
+        }
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value.trim();
+            }
+        }
+        return null;
+    }
+
+    private String safe(String value) {
+        return value == null ? "" : value;
+    }
+
+    private String asStackTrace(Throwable throwable) {
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+        throwable.printStackTrace(pw);
+        pw.flush();
+        return sw.toString();
     }
 }
