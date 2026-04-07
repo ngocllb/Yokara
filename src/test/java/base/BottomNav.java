@@ -27,6 +27,10 @@ public class BottomNav extends BaseScr {
 
     private final By tabTrangChu = AppiumBy.accessibilityId("Trang chủ");
     private final By tabTrucTuyen = AppiumBy.accessibilityId("Trực tuyến");
+    private final By tabTrucTuyenAndroidByUiAutomator =
+            AppiumBy.androidUIAutomator("new UiSelector().description(\"Trực tuyến\")");
+    private final By tabTrucTuyenAndroidByXpath =
+            AppiumBy.xpath("//android.widget.ImageView[@content-desc='Trực tuyến']");
     /** iOS: tùy build, Trang chủ / Trực tuyến có thể không phải XCUIElementTypeImage liền kề. */
     private final By tabTrucTuyenIosFallback = AppiumBy.xpath(
             "//XCUIElementTypeImage[@name='Trang chủ']/following-sibling::XCUIElementTypeImage[1]");
@@ -118,6 +122,36 @@ public class BottomNav extends BaseScr {
         }
     }
 
+    private void tapAndroidTrucTuyenTabWithFallbacks() {
+        By[] attempts = new By[] {
+                tabTrucTuyen,
+                tabTrucTuyenAndroidByUiAutomator,
+                tabTrucTuyenAndroidByXpath
+        };
+        TimeoutException last = null;
+        for (By by : attempts) {
+            try {
+                click(by);
+                return;
+            } catch (TimeoutException e) {
+                last = e;
+            }
+        }
+        // Khi app còn popup/chưa settle, thử xử lý popup rồi tap lại một lần.
+        handleStartupPopups();
+        for (By by : attempts) {
+            try {
+                click(by);
+                return;
+            } catch (TimeoutException e) {
+                last = e;
+            }
+        }
+        if (last != null) {
+            throw last;
+        }
+    }
+
     public TrucTuyenScr goToTrucTuyen() {
         if (driver instanceof IOSDriver) {
             try {
@@ -146,7 +180,7 @@ public class BottomNav extends BaseScr {
             }
             return scr;
         }
-        tapBottomTab(tabTrucTuyen);
+        tapAndroidTrucTuyenTabWithFallbacks();
         TrucTuyenScr scr = new TrucTuyenScr(driver);
         scr.waitForScreenReady(Duration.ofSeconds(18));
         return scr;
