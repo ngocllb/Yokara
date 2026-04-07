@@ -27,7 +27,8 @@ def get_ios_devices():
             if re.match(r'[0-9a-fA-F]{8}-[0-9a-fA-F]{16}|[0-9a-fA-F]{40}', line):
                 devices.append({"platform": "ios", "udid": line})
     except Exception as e:
-        pass
+        import sys
+        print(f"[get_jenkins_devices] idevice_id failed: {e}", file=sys.stderr)
 
     if not devices:
         try:
@@ -39,7 +40,8 @@ def get_ios_devices():
                 if udid_match:
                     devices.append({"platform": "ios", "udid": udid_match.group(1)})
         except Exception as e:
-            pass
+            import sys
+            print(f"[get_jenkins_devices] Fallback tidevice failed: {e}", file=sys.stderr)
 
     return devices
 
