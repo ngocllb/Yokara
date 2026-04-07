@@ -47,6 +47,20 @@ public class AuthFlow {
         // 5. Thực hiện đăng nhập theo phương thức
         return performLoginAction(method, methodPage, args);
     }
+    
+    public ToiProfileScr loginFromGuestPage(ToiGuestScr guestPage, String method, String... args) {
+        System.out.println("[AuthFlow] Bắt đầu luồng đăng nhập từ màn hình Guest ngẫu nhiên...");
+        BaseScr pageAfterClick = guestPage.clickLogin();
+        LoginMethodScr methodPage;
+        if (pageAfterClick instanceof AccountScr accountScr) {
+            accountScr.selectAnotherMethodLogin();
+            LoginMethodScr.waitForLoginMethodScreen(driver);
+            methodPage = new LoginMethodScr(driver);
+        } else {
+            methodPage = (LoginMethodScr) pageAfterClick;
+        }
+        return performLoginAction(method, methodPage, args);
+    }
 
     private void ensureToiTabVisible() {
         try {

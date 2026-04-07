@@ -141,6 +141,17 @@ public class TrucTuyenScr extends BaseScr {
         click(btnTaoPhong);
         return new TaoPhongScr(driver);
     }
+    
+    public TaoPhongScr clickTaoPhong(java.util.function.Consumer<pages.toi.ToiGuestScr> guestHandler) {
+        click(btnTaoPhong);
+        pages.toi.ToiGuestScr guestPage = new pages.toi.ToiGuestScr(driver);
+        if (guestPage.isGuestPageDisplayed() && guestHandler != null) {
+            guestHandler.accept(guestPage);
+            // Sau khi handler kết thúc (tức là đã đăng nhập xong), mình bấm lại Tạo Phòng
+            click(btnTaoPhong);
+        }
+        return new TaoPhongScr(driver);
+    }
 
     public BangXepHangScr clickBangXepHang() {
         click(btnBangXepHang);
