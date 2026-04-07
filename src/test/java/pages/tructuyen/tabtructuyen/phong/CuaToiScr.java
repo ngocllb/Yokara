@@ -1,7 +1,6 @@
 package pages.tructuyen.tabtructuyen.phong;
 
 import org.openqa.selenium.By;
-import org.openqa.selenium.support.ui.ExpectedConditions;
 
 import base.BaseScr;
 import io.appium.java_client.AppiumBy;
@@ -38,25 +37,28 @@ public class CuaToiScr extends BaseScr {
     }
 
     /**
-     * Build XPath locator tìm element có content-desc chứa tên phòng (truncated).
+     * Build XPath locator tìm element có content-desc hoặc name chứa tên phòng (truncated).
      */
     private By roomLocator(String roomName) {
         String searchName = safeSearchName(roomName);
         return AppiumBy.xpath(
-                "//*[contains(@content-desc, '" + searchName + "')]");
+                "//*[contains(@content-desc, '" + searchName + "') or contains(@name, '" + searchName + "')]");
     }
 
     // ─── Checks ───────────────────────────────────────────────────────────────
 
     /**
      * Kiểm tra tên phòng có hiển thị trong danh sách hay không.
+     * Thực hiện scroll tìm kiếm nếu cần.
      *
      * @param expectedName tên phòng cần tìm (sẽ tự truncate cho an toàn)
      */
     public boolean isRoomNameDisplayed(String expectedName) {
         try {
-            wait.until(ExpectedConditions.visibilityOfElementLocated(roomLocator(expectedName)));
-            return true;
+            By locator = roomLocator(expectedName);
+            // Scroll tìm phòng nếu chưa thấy
+            scrollToElement(locator);
+            return isDisplayed(locator);
         } catch (Exception e) {
             return false;
         }
@@ -67,17 +69,16 @@ public class CuaToiScr extends BaseScr {
     /**
      * Bấm vào card phòng trong danh sách để vào màn hình phòng {@link PhongScr}.
      *
-     * <p>Card phòng là {@code android.view.View} clickable, content-desc dạng
-     * {@code "Talk\n0\n<tên phòng truncated>"}.</p>
+     * <p>Card phòng là element clickable chứa tên phòng.</p>
      *
      * @param roomName tên phòng cần click (sẽ tự truncate cho an toàn)
      * @return PhongScr – màn hình bên trong phòng
      */
     public PhongScr clickRoom(String roomName) {
         String searchName = safeSearchName(roomName);
-        // Target android.view.View clickable chứa tên phòng
+        // Target element chứa tên phòng - generic XPath to work on both platforms
         By clickableRoom = AppiumBy.xpath(
-                "//android.view.View[@clickable='true'][contains(@content-desc, '" + searchName + "')]");
+                "//*[contains(@content-desc, '" + searchName + "') or contains(@name, '" + searchName + "')]");
         click(clickableRoom);
         return new PhongScr(driver);
     }

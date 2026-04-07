@@ -82,6 +82,8 @@ public class BaseScr {
     /**
      * Chọn locator theo nền tảng (multi-device / parallel): Android vs iOS.
      * Dùng khi đã bắt riêng từng nền (resource-id / XPath / accessibility).
+     *
+     * @see core.LocatorPolicy Quy ước: ưu tiên chuỗi chung (accessibility) trước khi tách Android/iOS.
      */
     protected static By byPlatform(AppiumDriver driver, By androidLocator, By iosLocator) {
         return driver instanceof IOSDriver ? iosLocator : androidLocator;
@@ -111,6 +113,22 @@ public class BaseScr {
         }
     }
 
+    /**
+     * Chọn / tap phần tử sau khi <strong>hiển thị</strong> ({@link ExpectedConditions#visibilityOfElementLocated}).
+     * Ổn định hơn {@link #click(By)} khi WDA không đánh dấu clickable (iOS {@code StaticText}, một số icon).
+     */
+    protected void select(By locator) {
+        for (int i = 0; i < 3; i++) {
+            try {
+                WebElement element = wait.until(ExpectedConditions.visibilityOfElementLocated(locator));
+                element.click();
+                return;
+            } catch (StaleElementReferenceException e) {
+                if (i == 2) throw e;
+            }
+        }
+    }
+
     /* ================= TYPE ================= */
 
     protected void type(By locator, String text) {
@@ -127,32 +145,62 @@ public class BaseScr {
         }
     }
 
-    /* ================= DISPLAY ================= */
+    /* ================= DISPLAY & WAIT ================= */
 
+    /**
+     * Kiểm tra nhanh phần tử có hiển thị hay không (không dùng timeout dài).
+     */
     protected boolean isDisplayed(By locator) {
         try {
-            return !driver.findElements(locator).isEmpty();
+            List<WebElement> els = driver.findElements(locator);
+            return !els.isEmpty() && els.get(0).isDisplayed();
         } catch (Exception e) {
             return false;
         }
     }
 
+    /**
+     * Đợi tối đa timeout DEFAULT cho phần tử xuất hiện và hiển thị.
+     */
+    protected WebElement waitForVisible(By locator) {
+        return wait.until(ExpectedConditions.visibilityOfElementLocated(locator));
+    }
+
+    /**
+     * Đợi phần tử biến mất khỏi màn hình hoặc DOM.
+     */
+    protected void waitForInvisibility(By locator) {
+        wait.until(ExpectedConditions.invisibilityOfElementLocated(locator));
+    }
+
+    /**
+     * Đợi phần tử có trạng thái Clickable.
+     */
+    protected WebElement waitForClickable(By locator) {
+        return wait.until(ExpectedConditions.elementToBeClickable(locator));
+    }
+
     /* ================= SWIPE ================= */
 
     public void swipeUp() {
-        Dimension size = driver.manage().window().getSize();
+        if (driver instanceof io.appium.java_client.ios.IOSDriver) {
+            Map<String, Object> params = new java.util.HashMap<>();
+            params.put("direction", "up");
+            driver.executeScript("mobile: swipe", params);
+        } else {
+            Dimension size = driver.manage().window().getSize();
+            int startX = size.width / 2;
+            int startY = (int) (size.height * 0.8);
 
-        int startX = size.width / 2;
-        int startY = (int) (size.height * 0.8);
-
-        driver.executeScript("mobile: swipeGesture", Map.of(
-                "left",      startX,
-                "top",       startY,
-                "width",     0,
-                "height",    size.height,
-                "direction", "up",
-                "percent",   0.7
-        ));
+            driver.executeScript("mobile: swipeGesture", Map.of(
+                    "left", startX,
+                    "top", startY,
+                    "width", size.width,
+                    "height", size.height,
+                    "direction", "up",
+                    "percent", 0.7
+            ));
+        }
     }
 
     /* ================= SCROLL ================= */

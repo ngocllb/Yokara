@@ -2,7 +2,10 @@ package base;
 
 import io.appium.java_client.AppiumBy;
 import io.appium.java_client.AppiumDriver;
+import io.appium.java_client.ios.IOSDriver;
 import org.openqa.selenium.By;
+import org.openqa.selenium.TimeoutException;
+import org.openqa.selenium.support.ui.ExpectedConditions;
 
 import pages.trangchu.TrangChuScr;
 import pages.tructuyen.tabtructuyen.TrucTuyenScr;
@@ -11,44 +14,27 @@ import pages.tinnhan.TinNhanScr;
 import pages.toi.ToiProfileScr;
 
 /**
- * Thanh điều hướng dưới — mỗi tab: một XPath Android và một XPath iOS (dump thật, không OR trong cùng nền).
- * <p>Tab “Hát” / badge “Tin nhắn” không có {@code content-desc} cố định trên Android — dùng thứ tự anh em sau tab “Trực tuyến”.
- * iOS “Tin nhắn” bọc trong {@code Other} — dùng anh em thứ hai sau “Trực tuyến”; “Tôi” là {@code Image} thứ hai sau “Trực tuyến”.</p>
+ * Thanh điều hướng dưới — các tab có {@code content-desc} / {@code name} trùng chuỗi dùng chung
+ * {@link AppiumBy#accessibilityId} (đối chiếu {@code XML android Screen locator/HatScr_android.txt} dòng tab bar).
+ * <p>Riêng <strong>Hát</strong> và <strong>Tin nhắn</strong> (badge đổi số): Android không có desc cố định / chuỗi khác iOS → {@link #byPlatform}.</p>
  */
 public class BottomNav extends BaseScr {
 
-    private final By tabTrangChu;
-    private final By tabTrucTuyen;
+    private final By tabTrangChu = AppiumBy.accessibilityId("Trang chủ");
+    private final By tabTrucTuyen = AppiumBy.accessibilityId("Trực tuyến");
     private final By tabHat;
     private final By tabTinNhan;
-    private final By tabToi;
+    private final By tabToi = AppiumBy.accessibilityId("Tôi");
+    /** iOS: cùng hàng tab với dump {@code scripts/xml_dumps/ios/ToiProfileScr_ios.xml} (Hát → Tin nhắn → Tôi). */
+    private final By tabToiIosFallback = AppiumBy.xpath(
+            "//XCUIElementTypeImage[@name='Trực tuyến']/following-sibling::XCUIElementTypeImage[3]");
 
     public BottomNav(AppiumDriver driver) {
         super(driver);
-        tabTrangChu = byPlatform(driver, androidTabTrangChu(), iosTabTrangChu());
-        tabTrucTuyen = byPlatform(driver, androidTabTrucTuyen(), iosTabTrucTuyen());
         tabHat = byPlatform(driver, androidTabHat(), iosTabHat());
         tabTinNhan = byPlatform(driver, androidTabTinNhan(), iosTabTinNhan());
-        tabToi = byPlatform(driver, androidTabToi(), iosTabToi());
     }
 
-    private static By androidTabTrangChu() {
-        return AppiumBy.xpath("//android.widget.ImageView[@content-desc='Trang chủ']");
-    }
-
-    private static By iosTabTrangChu() {
-        return AppiumBy.xpath("//XCUIElementTypeImage[@name='Trang chủ']");
-    }
-
-    private static By androidTabTrucTuyen() {
-        return AppiumBy.xpath("//android.widget.ImageView[@content-desc='Trực tuyến']");
-    }
-
-    private static By iosTabTrucTuyen() {
-        return AppiumBy.xpath("//XCUIElementTypeImage[@name='Trực tuyến']");
-    }
-
-    /** Image không có content-desc — vị trí ngay sau tab Trực tuyến (dump Android). */
     private static By androidTabHat() {
         return AppiumBy.xpath(
                 "//android.widget.ImageView[@content-desc='Trực tuyến']"
@@ -60,58 +46,58 @@ public class BottomNav extends BaseScr {
                 "//XCUIElementTypeImage[@name='Trực tuyến']/following-sibling::XCUIElementTypeImage[1]");
     }
 
-    /** Badge đổi số — không bám chuỗi Tin nhắn\\nN; chỉ vị trí cột thứ 4. */
     private static By androidTabTinNhan() {
         return AppiumBy.xpath(
                 "//android.widget.ImageView[@content-desc='Trực tuyến']"
                         + "/following-sibling::android.widget.ImageView[2]");
     }
 
-    /** Khối Other bọc icon + badge (dump iOS). */
     private static By iosTabTinNhan() {
         return AppiumBy.xpath(
                 "//XCUIElementTypeImage[@name='Trực tuyến']/following-sibling::*[2]");
     }
 
-    private static By androidTabToi() {
-        return AppiumBy.xpath(
-                "//android.widget.ImageView[@content-desc='Trực tuyến']"
-                        + "/following-sibling::android.widget.ImageView[3]");
-    }
-
-    /** Image “Tôi” là Image thứ hai sau “Trực tuyến” (sau Image Hát). */
-    private static By iosTabToi() {
-        return AppiumBy.xpath(
-                "//XCUIElementTypeImage[@name='Trực tuyến']/following-sibling::XCUIElementTypeImage[2]");
+    /** iOS: icon tab đôi khi {@code visible=false} nhưng vẫn tap — dùng presence + click. */
+    private void tapBottomTab(By tab) {
+        if (driver instanceof IOSDriver) {
+            // iOS: tap bằng presence và đợi transition
+            wait.until(ExpectedConditions.presenceOfElementLocated(tab)).click();
+            try { Thread.sleep(500); } catch (InterruptedException ignored) {} // Minimal stable pause for iOS
+        } else {
+            click(tab);
+        }
     }
 
     public TrangChuScr goToTrangChu() {
-
-        click(tabTrangChu);
+        tapBottomTab(tabTrangChu);
         return new TrangChuScr(driver);
     }
 
     public TrucTuyenScr goToTrucTuyen() {
-
-        click(tabTrucTuyen);
+        tapBottomTab(tabTrucTuyen);
         return new TrucTuyenScr(driver);
     }
 
     public HatScr goToHat() {
-
-        click(tabHat);
+        tapBottomTab(tabHat);
         return new HatScr(driver);
     }
 
     public TinNhanScr goToTinNhan() {
-
-        click(tabTinNhan);
+        tapBottomTab(tabTinNhan);
         return new TinNhanScr(driver);
     }
 
     public ToiProfileScr goToToi() {
-
-        click(tabToi);
+        if (driver instanceof IOSDriver) {
+            try {
+                tapBottomTab(tabToi);
+            } catch (TimeoutException e) {
+                tapBottomTab(tabToiIosFallback);
+            }
+        } else {
+            tapBottomTab(tabToi);
+        }
         return new ToiProfileScr(driver);
     }
 }

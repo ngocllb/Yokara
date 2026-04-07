@@ -6,7 +6,6 @@ import org.openqa.selenium.support.ui.ExpectedConditions;
 import base.BaseScr;
 import io.appium.java_client.AppiumBy;
 import io.appium.java_client.AppiumDriver;
-import io.appium.java_client.ios.IOSDriver;
 
 public class TaoPhongScr extends BaseScr {
 
@@ -44,7 +43,9 @@ public class TaoPhongScr extends BaseScr {
         click(txtTenPhong);
         By lblSuaTen = AppiumBy.accessibilityId("Sửa tên");
         if (isDisplayed(lblSuaTen)) {
-            By txtEditName = AppiumBy.className("android.widget.EditText");
+            By txtEditName = byPlatform(driver, 
+                    AppiumBy.className("android.widget.EditText"), 
+                    AppiumBy.xpath("//XCUIElementTypeTextField | //XCUIElementTypeSearchField"));
             By btnLuu = AppiumBy.accessibilityId("Lưu");
             type(txtEditName, roomName);
             click(btnLuu);
@@ -67,10 +68,9 @@ public class TaoPhongScr extends BaseScr {
                 // Đợi popup "Vui lòng đặt lại một mật khẩu gồm 4 số" xuất hiện
                 wait.until(ExpectedConditions.visibilityOfElementLocated(lblNhapMatKhau));
 
-                By txtPassword = driver instanceof IOSDriver
-                        ? AppiumBy.xpath(
-                                "(//XCUIElementTypeSecureTextField)[1] | (//XCUIElementTypeTextField)[1]")
-                        : AppiumBy.className("android.widget.EditText");
+                By txtPassword = byPlatform(driver,
+                        AppiumBy.className("android.widget.EditText"),
+                        AppiumBy.xpath("(//XCUIElementTypeSecureTextField)[1] | (//XCUIElementTypeTextField)[1]"));
                 type(txtPassword, password);
 
                 // Bấm Xác nhận để hoàn tất tạo phòng

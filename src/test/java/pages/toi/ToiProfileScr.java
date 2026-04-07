@@ -11,16 +11,14 @@ import org.openqa.selenium.support.ui.ExpectedConditions;
 import pages.toi.caidat.CaiDatScr;
 
 /**
- * Tab Tôi / profile — locator dùng chung Android (content-desc, resource-id) và iOS (name, label, value).
+ * Tab Tôi khi đã đăng nhập — profile (UID, Tác phẩm, Cài đặt, …).
+ * Không phải màn chọn phương thức đăng nhập — xem {@link pages.toi.login.LoginMethodScr}.
  */
 public class ToiProfileScr extends BaseScr {
 
-    /** Android: ImageView có content-desc (thường là UID); iOS: text hoặc ảnh header profile. */
+    /** Android: {@code ImageView} UID (content-desc số); iOS: {@code XCUIElementTypeImage} có {@code name}/{@code label} là UID (dump {@code ToiProfileScr_ios.xml}). */
     private final By userIdAnchor;
-    /**
-     * Android: ImageView cạnh dòng Tác phẩm.
-     * iOS: nút Cài đặt / biểu tượng setting trong navigation hoặc header.
-     */
+    /** Android: {@code ImageView[2]} header; iOS: icon phải header — hai {@code Image} không {@code name}/{@code label} (trái = back, phải = Cài đặt). */
     private final By btnSetting;
 
     private final By tabTacPham;
@@ -35,10 +33,8 @@ public class ToiProfileScr extends BaseScr {
             "//*[contains(@content-desc, 'VIP') or contains(@name, 'VIP') or contains(@label, 'VIP') "
                     + "or contains(@value, 'VIP')]");
 
-    /** Khách: nút đăng nhập. */
-    private final By btnDangNhapKhach = AppiumBy.xpath(
-            "//*[contains(@content-desc, 'Đăng nhập') or contains(@content-desc, 'ĐĂNG NHẬP')"
-                    + " or contains(@name, 'Đăng nhập') or contains(@label, 'Đăng nhập') or contains(@value, 'Đăng nhập')]");
+    /** Khách: cùng semantics {@code content-desc} / label với {@link pages.toi.ToiGuestScr}. */
+    private final By btnDangNhapKhach = AppiumBy.accessibilityId("Đăng nhập");
 
     private final BottomNav bottomNav;
 
@@ -47,56 +43,50 @@ public class ToiProfileScr extends BaseScr {
         this.bottomNav = new BottomNav(driver);
         this.userIdAnchor = buildUserIdAnchor(driver);
         this.btnSetting = buildBtnSetting(driver);
-        this.tabTacPham = byLabeledTab("Tác phẩm");
-        this.tabMoiSongCa = byLabeledTab("Mời song ca");
-        this.btnBanNhap = byLabeledControl("Bản nháp");
-        this.btnGioQua = byLabeledControl("Giỏ quà");
-        this.btnNhiemVu = byLabeledControl("Nhiệm vụ");
+        this.tabTacPham = byPlatform(
+                driver,
+                AppiumBy.xpath("//android.view.View[contains(@content-desc,'Tác phẩm')]"),
+                AppiumBy.xpath("//XCUIElementTypeOther[contains(@name,'Tác phẩm')]"));
+        this.tabMoiSongCa = byPlatform(
+                driver,
+                AppiumBy.xpath("//android.view.View[contains(@content-desc,'Mời song ca')]"),
+                AppiumBy.xpath("//XCUIElementTypeStaticText[contains(@name,'Mời song ca')]"));
+        this.btnBanNhap = AppiumBy.accessibilityId("Bản nháp");
+        this.btnGioQua = AppiumBy.xpath("//android.widget.ImageView[contains(@content-desc,'Giỏ quà')]");
+        this.btnNhiemVu = AppiumBy.accessibilityId("Nhiệm vụ");
     }
 
+    /**
+     * Android: {@code ToiProfileScr_android.txt} — UID là {@code ImageView} có {@code content-desc} chỉ chữ số.
+     * iOS: {@code scripts/xml_dumps/ios/ToiProfileScr_ios.xml} — UID là {@code ImageView} {@code name=label} số (vd. 5955400), không phải {@code StaticText} tên hiển thị.
+     */
     private static By buildUserIdAnchor(AppiumDriver driver) {
         if (driver instanceof IOSDriver) {
             return AppiumBy.xpath(
-                    "//XCUIElementTypeStaticText["
-                            + "string-length(@name)>3 and not(contains(@name,'VIP')) "
-                            + "and not(contains(@name,'Tác phẩm')) and not(contains(@name,'Đăng nhập'))"
-                            + "][1]"
-                            + " | //XCUIElementTypeImage[(@name and string-length(@name)>0) or (@label and string-length(@label)>0)][1]");
+                    "//XCUIElementTypeImage[@name and @label and @name = @label "
+                            + "and string-length(@name) >= 4 "
+                            + "and string-length(translate(@name, '0123456789', '')) = 0]");
         }
-        return AppiumBy.xpath("//android.widget.ImageView[@content-desc]");
+        return AppiumBy.xpath(
+                "//android.widget.ImageView["
+                        + "@content-desc and string-length(@content-desc) >= 4 "
+                        + "and string-length(translate(@content-desc, '0123456789', '')) = 0]");
     }
 
+    /**
+     * Android: icon Cài đặt góc phải header — {@code ancestor[3]} của tab Tác phẩm → {@code ImageView[2]}.
+     * iOS: hai {@code XCUIElementTypeImage} không {@code name}/{@code label} trên cùng hàng (trái back, phải Cài đặt) — dump thực tế, không có {@code NavigationBar}.
+     */
     private static By buildBtnSetting(AppiumDriver driver) {
-        String android =
-                "//android.view.View[@content-desc='Tác phẩm']/parent::*//android.widget.ImageView[1]";
+        By android = AppiumBy.xpath(
+                "//android.view.View[contains(@content-desc,'Tác phẩm')]/ancestor::android.view.View[3]"
+                        + "/android.widget.ImageView[2]");
         if (driver instanceof IOSDriver) {
             return AppiumBy.xpath(
-                    android
-                            + " | //XCUIElementTypeButton[contains(@name,'Cài đặt') or contains(@label,'Cài đặt')]"
-                            + " | //XCUIElementTypeButton[contains(@name,'Setting') or contains(@label,'Setting')]"
-                            + " | //XCUIElementTypeNavigationBar//XCUIElementTypeButton[last()]"
-                            + " | //XCUIElementTypeImage[contains(@name,'Cài') or contains(@label,'Cài') or contains(@name,'setting')]");
+                    "//XCUIElementTypeImage[not(@name) and not(@label)]"
+                            + "[preceding-sibling::XCUIElementTypeImage[not(@name) and not(@label)]]");
         }
-        return AppiumBy.xpath(android);
-    }
-
-    /** Tab phụ (Tác phẩm / Mời song ca): đủ content-desc + name + label + value. */
-    private static By byLabeledTab(String label) {
-        return AppiumBy.xpath(
-                "//*[contains(@content-desc, '" + label + "')"
-                        + " or contains(@name, '" + label + "')"
-                        + " or contains(@label, '" + label + "')"
-                        + " or contains(@value, '" + label + "')]"
-        );
-    }
-
-    /** Icon nhanh: accessibilityId thường trùng hai nền; thêm xpath dự phòng. */
-    private static By byLabeledControl(String label) {
-        return AppiumBy.xpath(
-                "//*[@content-desc='" + label + "' or @name='" + label + "' or @label='" + label + "' or @value='" + label + "']"
-                        + " | //*[contains(@content-desc, '" + label + "') or contains(@name, '" + label + "') "
-                        + "or contains(@label, '" + label + "') or contains(@value, '" + label + "')]"
-        );
+        return android;
     }
 
     public String getUserId() {

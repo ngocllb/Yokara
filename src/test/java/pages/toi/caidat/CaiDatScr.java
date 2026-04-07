@@ -9,18 +9,26 @@ public class CaiDatScr extends BaseScr {
 
     public CaiDatScr(AppiumDriver driver) {
         super(driver);
+        // iOS: mục đầu là "Bình chọn tính năng" (dump caidat.xml); Android giữ "Ứng dụng hay"
+        this.ungDungHay = byPlatform(driver,
+                AppiumBy.accessibilityId("Ứng dụng hay"),
+                AppiumBy.accessibilityId("Bình chọn tính năng"));
+        // iOS: name/label kèm số build (vd. Phiên bản 10.55.15) — predicate BEGINSWITH 'Phiên bản'
+        this.phienBan = byPlatform(driver,
+                AppiumBy.androidUIAutomator("new UiSelector().descriptionStartsWith(\"Phiên bản\")"),
+                AppiumBy.iOSNsPredicateString("name BEGINSWITH 'Phiên bản'"));
     }
 
     /* ================= LOCATORS ================= */
 
-    private final By ungDungHay = AppiumBy.accessibilityId("Ứng dụng hay");
+    private final By ungDungHay;
     private final By baoCaoLoi = AppiumBy.accessibilityId("Báo cáo lỗi");
     private final By donDep = AppiumBy.accessibilityId("Dọn dẹp");
     private final By nguoiBiChan = AppiumBy.accessibilityId("Người bị chặn");
     private final By quyenRiengTu = AppiumBy.accessibilityId("Quyền riêng tư");
     private final By chinhSach = AppiumBy.accessibilityId("Chính sách");
     private final By ngonNgu = AppiumBy.accessibilityId("Ngôn ngữ");
-    private final By phienBan = AppiumBy.xpath("//android.widget.ImageView[contains(@content-desc,'Phiên bản')]");
+    private final By phienBan;
     private final By huyTaiKhoan = AppiumBy.accessibilityId("Huỷ tài khoản");
     private final By chuyenTaiKhoan = AppiumBy.accessibilityId("Chuyển đổi tài khoản");
     private final By dangXuat = AppiumBy.accessibilityId("Đăng xuất");

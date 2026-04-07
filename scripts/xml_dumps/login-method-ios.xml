@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<AppiumAUT>
+  <XCUIElementTypeApplication type="XCUIElementTypeApplication" name="Yokara" label="Yokara" enabled="true" visible="true" accessible="false" x="0" y="0" width="428" height="926" index="0" traits="" processId="2065" bundleId="com.yokara">
+    <XCUIElementTypeWindow type="XCUIElementTypeWindow" enabled="true" visible="true" accessible="false" x="0" y="0" width="428" height="926" index="0" traits="">
+      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="428" height="926" index="0" traits="">
+        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="428" height="926" index="0" traits="">
+          <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="428" height="926" index="0" traits="">
+            <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="428" height="926" index="0" traits="">
+              <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="428" height="926" index="0" traits="">
+                <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="428" height="926" index="0" traits="">
+                  <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="428" height="926" index="0" traits="">
+                    <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="428" height="926" index="0" traits=""/>
+                    <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="428" height="926" index="1" traits="">
+                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="428" height="926" index="0" traits=""/>
+                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="428" height="926" index="1" traits="">
+                        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="428" height="926" index="0" traits=""/>
+                        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="428" height="926" index="1" traits="">
+                          <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="428" height="926" index="0" traits=""/>
+                          <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Bỏ qua" name="Bỏ qua" label="Bỏ qua" enabled="true" visible="true" accessible="true" x="346" y="50" width="68" height="33" index="1" traits="StaticText"/>
+                          <XCUIElementTypeImage type="XCUIElementTypeImage" enabled="true" visible="false" accessible="false" x="158" y="116" width="112" height="113" index="2" traits="Image"/>
+                          <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Đăng nhập để tận hưởng trải nghiệm âm nhạc tốt hơn" name="Đăng nhập để tận hưởng trải nghiệm âm nhạc tốt hơn" label="Đăng nhập để tận hưởng trải nghiệm âm nhạc tốt hơn" enabled="true" visible="true" accessible="true" x="84" y="253" width="260" height="47" index="3" traits="StaticText"/>
+                          <XCUIElementTypeImage type="XCUIElementTypeImage" name="Đăng nhập Facebook" label="Đăng nhập Facebook" enabled="true" visible="true" accessible="true" x="62" y="458" width="304" height="57" index="4" traits="Image"/>
+                          <XCUIElementTypeImage type="XCUIElementTypeImage" name="Đăng nhập bằng Apple" label="Đăng nhập bằng Apple" enabled="true" visible="true" accessible="true" x="62" y="533" width="304" height="57" index="5" traits="Image"/>
+                          <XCUIElementTypeImage type="XCUIElementTypeImage" name="Gần đây" label="Gần đây" enabled="true" visible="true" accessible="true" x="69" y="611" width="55" height="56" index="6" traits="Image"/>
+                          <XCUIElementTypeImage type="XCUIElementTypeImage" enabled="true" visible="true" accessible="true" x="147" y="611" width="56" height="56" index="7" traits="Image"/>
+                          <XCUIElementTypeImage type="XCUIElementTypeImage" enabled="true" visible="true" accessible="true" x="225" y="611" width="56" height="56" index="8" traits="Image"/>
+                          <XCUIElementTypeImage type="XCUIElementTypeImage" enabled="true" visible="true" accessible="true" x="304" y="611" width="55" height="56" index="9" traits="Image"/>
+                          <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Gặp sự cố đăng nhập?" name="Gặp sự cố đăng nhập?" label="Gặp sự cố đăng nhập?" enabled="true" visible="true" accessible="true" x="130" y="676" width="168" height="39" index="10" traits="StaticText"/>
+                          <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="428" height="926" index="11" traits="">
+                            <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="51" y="854" width="326" height="36" index="0" traits=""/>
+                            <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Tiếp tục sử dụng ứng dụng là bạn đồng ý với " name="Tiếp tục sử dụng ứng dụng là bạn đồng ý với " label="Tiếp tục sử dụng ứng dụng là bạn đồng ý với " enabled="true" visible="true" accessible="true" x="57" y="853" width="255" height="23" index="1" traits="StaticText"/>
+                            <XCUIElementTypeLink type="XCUIElementTypeLink" name="chính sách riêng tư" label="chính sách riêng tư" enabled="true" visible="true" accessible="true" x="94" y="853" width="280" height="41" index="2" traits="Link"/>
+                            <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value=" và " name=" và " label=" và " enabled="true" visible="true" accessible="true" x="135" y="871" width="29" height="23" index="3" traits="StaticText"/>
+                            <XCUIElementTypeLink type="XCUIElementTypeLink" name="điều khoản sử dụng" label="điều khoản sử dụng" enabled="true" visible="true" accessible="true" x="155" y="871" width="116" height="23" index="4" traits="Link"/>
+                            <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value=" của Yokara" name=" của Yokara" label=" của Yokara" enabled="true" visible="true" accessible="true" x="262" y="871" width="72" height="23" index="5" traits="StaticText"/>
+                          </XCUIElementTypeOther>
+                        </XCUIElementTypeOther>
+                      </XCUIElementTypeOther>
+                    </XCUIElementTypeOther>
+                  </XCUIElementTypeOther>
+                </XCUIElementTypeOther>
+              </XCUIElementTypeOther>
+            </XCUIElementTypeOther>
+            <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="false" accessible="false" x="0" y="0" width="428" height="926" index="1" traits="">
+              <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="false" accessible="false" x="0" y="0" width="428" height="926" index="0" traits=""/>
+            </XCUIElementTypeOther>
+          </XCUIElementTypeOther>
+        </XCUIElementTypeOther>
+      </XCUIElementTypeOther>
+    </XCUIElementTypeWindow>
+  </XCUIElementTypeApplication>
+</AppiumAUT>

@@ -21,17 +21,8 @@ public class TrungTamNhiemVuScr extends BaseScr {
     public TrungTamNhiemVuScr(AppiumDriver driver) {
         super(driver);
         this.bottomNav = new BottomNav(driver);
-        this.lblTrungTamNhiemVu = byLabeledText("Trung tâm nhiệm vụ");
-        this.lblNhiemVu = byLabeledText("Nhiệm vụ");
-    }
-
-    private static By byLabeledText(String label) {
-        return AppiumBy.xpath(
-                "//*[contains(@content-desc, '" + label + "')"
-                        + " or contains(@name, '" + label + "')"
-                        + " or contains(@label, '" + label + "')"
-                        + " or contains(@value, '" + label + "')]"
-        );
+        this.lblTrungTamNhiemVu = AppiumBy.accessibilityId("Trung tâm nhiệm vụ");
+        this.lblNhiemVu = AppiumBy.accessibilityId("Nhiệm vụ");
     }
 
     public BottomNav nav() {

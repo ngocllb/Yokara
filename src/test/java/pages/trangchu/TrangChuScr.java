@@ -6,12 +6,12 @@ import io.appium.java_client.AppiumDriver;
 import org.openqa.selenium.By;
 
 /**
- * Trang chủ — mỗi control một cặp locator Android/iOS bắt từ hierarchy thật (không chuỗi OR/dự phòng trong từng nền).
- * <p>Tiêu đề header tách khỏi tab dưới: Android {@code View} không clickable; iOS {@code StaticText} (tab là {@code Image}).</p>
+ * Trang chủ — accessibility id trùng {@code content-desc} (Android) / {@code name} (iOS) từ dump;
+ * riêng icon header phải tách XPath vì không có label cố định.
  */
 public class TrangChuScr extends BaseScr {
 
-    private final By lblTitle;
+    private final By lblTitle = AppiumBy.accessibilityId("Trang chủ");
     private final By btnTopRightAction;
 
     private final By btnSuKien;
@@ -25,20 +25,10 @@ public class TrangChuScr extends BaseScr {
         super(driver);
         bottomNav = new base.BottomNav(driver);
 
-        this.lblTitle = byPlatform(driver, androidTitleTrangChu(), iosTitleTrangChu());
         this.btnTopRightAction = byPlatform(driver, androidHeaderSearch(), iosHeaderSearch());
-        this.btnSuKien = byPlatform(driver, androidSuKien(), iosSuKien());
-        this.btnQuanhDay = byPlatform(driver, androidQuanhDay(), iosQuanhDay());
-        this.lblMvNoiBat = byPlatform(driver, androidMvNoiBat(), iosMvNoiBat());
-    }
-
-    private static By androidTitleTrangChu() {
-        return AppiumBy.xpath(
-                "//android.view.View[@content-desc='Trang chủ' and @clickable='false']");
-    }
-
-    private static By iosTitleTrangChu() {
-        return AppiumBy.xpath("//XCUIElementTypeStaticText[@name='Trang chủ']");
+        this.btnSuKien = AppiumBy.accessibilityId("Sự kiện");
+        this.btnQuanhDay = AppiumBy.accessibilityId("Quanh đây");
+        this.lblMvNoiBat = AppiumBy.accessibilityId("MV nổi bật");
     }
 
     private static By androidHeaderSearch() {
@@ -51,30 +41,6 @@ public class TrangChuScr extends BaseScr {
     private static By iosHeaderSearch() {
         return AppiumBy.xpath(
                 "//XCUIElementTypeStaticText[@name='Trang chủ']/following-sibling::XCUIElementTypeImage[1]");
-    }
-
-    private static By androidSuKien() {
-        return AppiumBy.accessibilityId("Sự kiện");
-    }
-
-    private static By iosSuKien() {
-        return AppiumBy.accessibilityId("Sự kiện");
-    }
-
-    private static By androidQuanhDay() {
-        return AppiumBy.accessibilityId("Quanh đây");
-    }
-
-    private static By iosQuanhDay() {
-        return AppiumBy.accessibilityId("Quanh đây");
-    }
-
-    private static By androidMvNoiBat() {
-        return AppiumBy.accessibilityId("MV nổi bật");
-    }
-
-    private static By iosMvNoiBat() {
-        return AppiumBy.accessibilityId("MV nổi bật");
     }
 
     public base.BottomNav nav() {

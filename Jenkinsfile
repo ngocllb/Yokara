@@ -1,47 +1,93 @@
-// Jenkins: JDK 17, Maven, Appium (một server 4723 phục vụ nhiều session song song), adb + Xcode/idevice.
-// HC BOX (nhiều máy USB): dùng -Phc-box → tách Allure: python3 scripts/split-allure-by-device.py
-// Job nên trỏ nhánh daily (hoặc Multibranch). Cron 8:00 theo múi giờ master Jenkins.
-// Trước bước test: agent Mac cần bật Appium (systemd/launchd hoặc stage riêng).
-
 pipeline {
     agent any
 
-    tools {
-        maven 'Maven-3.9'
-        jdk 'JDK-17'
-    }
-
-    parameters {
-        string(name: 'GIT_BRANCH', defaultValue: 'daily', description: 'Tên nhánh (dùng khi job Pipeline checkout theo parameter; Multibranch bỏ qua)')
+    triggers {
+        // Run automatically at 7:00 AM every day
+        cron('0 7 * * *')
     }
 
     options {
-        timestamps()
-    }
-
-    triggers {
-        cron('0 8 * * *')
+        // Skip default checkout to apply custom shallow clone logic
+        skipDefaultCheckout(true)
     }
 
     stages {
         stage('Checkout') {
             steps {
-                checkout scm
-                sh 'git rev-parse --abbrev-ref HEAD && git log -1 --oneline'
+                // Fetch only the latest commit from 'main' (shallow clone)
+                checkout scmGit(
+                    branches: [[name: '*/main']],
+                    extensions: [[$class: 'CloneOption', depth: 1, noTags: true, shallow: true]],
+                    userRemoteConfigs: [[url: 'https://github.com/ngocllb/Yokara']]
+                )
             }
         }
 
-        stage('Maven Test') {
+        stage('Detect Devices & Run Parallel Tests') {
             steps {
-                sh 'mvn -B clean test -Phc-box'
-                sh 'python3 scripts/split-allure-by-device.py || true'
+                script {
+                    echo "Checking for physically connected devices..."
+                    
+                    // Run python script to discover platforms and udids
+                    def devicesStr = sh(script: "python3 scripts/get_jenkins_devices.py", returnStdout: true).trim()
+                    def devices = readJSON text: devicesStr
+                    
+                    if (devices.size() == 0) {
+                        error("No physically connected devices found via ADB/idevice_id!")
+                    }
+                    
+                    echo "Detected ${devices.size()} devices: ${devices}"
+                    
+                    def parallelStages = [:]
+                    
+                    for (int i = 0; i < devices.size(); i++) {
+                        def device = devices[i]
+                        def platform = device.platform
+                        def udid = device.udid
+                        def shortUdid = udid.size() > 8 ? udid.substring(udid.size() - 8) : udid
+                        
+                        parallelStages["Test ${platform.toUpperCase()}-${shortUdid}"] = {
+                            stage("Run on ${udid}") {
+                                try {
+                                    // Make sure results folder is clean
+                                    sh "rm -rf target/allure-results-${udid}"
+                                    
+                                    // Execute Maven test bound to this specific device
+                                    sh """
+                                        mvn clean test -DsuiteXmlFile="testng-jenkins.xml" \
+                                        -Dplatform=${platform} \
+                                        -D${platform}.udid="${udid}" \
+                                        -Dallure.results.directory=target/allure-results-${udid}
+                                    """
+                                } finally {
+                                    // Create environment.properties for Allure to distinguish the devices in the final report
+                                    sh """
+                                        echo "Platform=${platform}" > target/allure-results-${udid}/environment.properties
+                                        echo "DeviceUDID=${udid}" >> target/allure-results-${udid}/environment.properties
+                                    """
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Execute all generated stages concurrently
+                    parallel parallelStages
+                }
             }
         }
     }
 
     post {
         always {
-            archiveArtifacts artifacts: 'allure-results/**,allure-results-by-device/**,target/ios-audit/**', allowEmptyArchive: true
+            // Aggregate all the separate allure-results directories into one comprehensive Allure report
+            // The Jenkins Allure Plugin will generate a single link containing data from all devices.
+            allure([
+                includeProperties: false, 
+                jdk: '', 
+                properties: [], 
+                reportBuildPolicy: 'ALWAYS', 
+                results: [[path: 'target/allure-results-*']]
+            ])
         }
     }
 }

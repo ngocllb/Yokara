@@ -3,9 +3,12 @@ package base;
 import core.ConfigManager;
 import core.DeviceManager;
 import core.DriverFactory;
+import io.appium.java_client.AppiumBy;
 import io.appium.java_client.AppiumDriver;
 import io.appium.java_client.InteractsWithApps;
 import io.appium.java_client.ios.IOSDriver;
+import org.openqa.selenium.By;
+import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.SkipException;
 import org.testng.annotations.AfterMethod;
@@ -92,6 +95,40 @@ public class BaseDriver {
 
         // Xử lý các popup khi vừa mở app (EULA, Permission)
         new BaseScr(driver).handleStartupPopups();
+        ensureIosMainTabBarVisible();
+    }
+
+    /**
+     * iOS + {@code noReset=true} / {@code forceAppLaunch=false}: session đôi khi mở không phải màn 5 tab
+     * → không tìm thấy {@code accessibilityId("Tôi")}. Thử terminate + activate một lần để về root có bottom bar.
+     */
+    private void ensureIosMainTabBarVisible() {
+        if (!(driver instanceof IOSDriver)) {
+            return;
+        }
+        By trangChu = AppiumBy.accessibilityId("Trang chủ");
+        By toi = AppiumBy.accessibilityId("Tôi");
+        WebDriverWait tabWait = new WebDriverWait(driver, Duration.ofSeconds(12));
+        try {
+            tabWait.until(d -> !d.findElements(trangChu).isEmpty() || !d.findElements(toi).isEmpty());
+            return;
+        } catch (TimeoutException e) {
+            System.out.println("[BaseDriver] iOS: chưa thấy thanh tab sau activateApp — thử terminate + activate");
+        }
+        try {
+            String bid = ConfigManager.getRequired("ios.bundleId");
+            InteractsWithApps app = (InteractsWithApps) driver;
+            app.terminateApp(bid);
+            // Thread.sleep(2000) removed to follow "No sleep" rule. 
+            // Appium's activateApp usually handles the restart well.
+            app.activateApp(bid);
+            new BaseScr(driver).handleStartupPopups();
+            WebDriverWait afterRelaunch = new WebDriverWait(driver, Duration.ofSeconds(25));
+            afterRelaunch.until(d -> !d.findElements(trangChu).isEmpty() || !d.findElements(toi).isEmpty());
+        } catch (Exception ex) {
+            throw new RuntimeException(
+                    "[BaseDriver] iOS: không đưa app về màn có bottom bar (Trang chủ / Tôi): " + ex.getMessage(), ex);
+        }
     }
 
     public static AppiumDriver getDriver() {

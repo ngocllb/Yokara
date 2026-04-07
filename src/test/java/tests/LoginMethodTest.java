@@ -61,11 +61,12 @@ public class LoginMethodTest extends BaseDriver {
                 "Mở màn hình chọn phương thức đăng nhập",
                 guestPage::clickLogin
         );
-        LoginMethodScr LoginMethodScr = StepUtils.step(
+        LoginMethodScr loginMethodPage = StepUtils.step(
                 "Đi tới màn Login Method",
                 () -> {
-                    if (page instanceof AccountScr AccountScr) {
-                        AccountScr.selectAnotherMethodLogin();
+                    if (page instanceof AccountScr accountScr) {
+                        accountScr.selectAnotherMethodLogin();
+                        LoginMethodScr.waitForLoginMethodScreen(driver);
                         return new LoginMethodScr(driver);
                     }
                     return (LoginMethodScr) page;
@@ -73,7 +74,7 @@ public class LoginMethodTest extends BaseDriver {
         );
         LoginPhoneScr LoginPhoneScr = StepUtils.step(
                 "Mở màn hình đăng nhập bằng số điện thoại",
-                () -> (LoginPhoneScr) LoginMethodScr.loginWith("phone")
+                () -> (LoginPhoneScr) loginMethodPage.loginWith("phone")
         );
         OtpVerificationScr otpPage = StepUtils.step(
                 "Nhập số điện thoại và chuyển sang màn OTP",

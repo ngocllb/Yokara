@@ -27,7 +27,8 @@ public class ThongTinPhongScr extends BaseScr {
 
     /** Nút Quay lại từ màn hình Thông tin phòng → PhongScr */
     private final By btnBack = AppiumBy.xpath(
-            "//*[@content-desc='Quay lại' or @content-desc='Back']");
+            "//*[@content-desc='Quay lại' or @name='Quay lại' or @label='Quay lại' or @value='Quay lại'"
+                    + " or @content-desc='Back' or @name='Back' or @label='Back']");
 
     // ─── Tên phòng ────────────────────────────────────────────────────────────
 
@@ -45,46 +46,52 @@ public class ThongTinPhongScr extends BaseScr {
 
     /** Badge / nhãn "Công khai" */
     private final By lblCongKhai = AppiumBy.xpath(
-            "//*[@content-desc='Công khai' or @text='Công khai']");
+            "//*[@content-desc='Công khai' or @text='Công khai' or @name='Công khai' or @label='Công khai']");
 
     /** Badge / nhãn "Riêng tư" */
     private final By lblRiengTu = AppiumBy.xpath(
-            "//*[@content-desc='Riêng tư' or @text='Riêng tư']");
+            "//*[@content-desc='Riêng tư' or @text='Riêng tư' or @name='Riêng tư' or @label='Riêng tư']");
 
     // ─── Đổi mật khẩu (chỉ khi PRIVATE) ─────────────────────────────────────
 
     /** Row "Đổi mật khẩu phòng" (chỉ hiện khi phòng Riêng tư) */
     private final By rowDoiMatKhau = AppiumBy.xpath(
-            "//*[contains(@content-desc,'Đổi mật khẩu') or contains(@text,'Đổi mật khẩu')]");
+            "//*[contains(@content-desc,'Đổi mật khẩu') or contains(@text,'Đổi mật khẩu') or contains(@name,'Đổi mật khẩu')]");
 
     /** Ô nhập mật khẩu mới (xuất hiện sau khi bấm vào row Đổi mật khẩu) */
-    private final By txtMatKhauMoi = AppiumBy.className("android.widget.EditText");
+    private final By txtMatKhauMoi;
 
     /** Nút Lưu / Xác nhận đổi mật khẩu */
     private final By btnLuuMatKhau = AppiumBy.xpath(
-            "//*[@content-desc='Lưu' or @text='Lưu' " +
-            "or @content-desc='Xác nhận' or @text='Xác nhận' " +
-            "or @content-desc='OK' or @text='OK']");
+            "//*[@content-desc='Lưu' or @text='Lưu' or @name='Lưu' or @label='Lưu'" +
+            " or @content-desc='Xác nhận' or @text='Xác nhận' or @name='Xác nhận' or @label='Xác nhận'" +
+            " or @content-desc='OK' or @text='OK' or @name='OK' or @label='OK']");
 
     // ─── Thông báo ────────────────────────────────────────────────────────────
 
     /** Vùng Thông báo (có thể click để đổi nội dung) */
     private final By rowThongBao = AppiumBy.xpath(
-            "//*[contains(@content-desc,'Thông báo') or contains(@text,'Thông báo')]");
+            "//*[contains(@content-desc,'Thông báo') or contains(@text,'Thông báo') or contains(@name,'Thông báo')]");
 
     /** Ô nhập nội dung thông báo mới */
-    private final By txtThongBao = AppiumBy.className("android.widget.EditText");
+    private final By txtThongBao;
 
     /** Nút Lưu nội dung thông báo */
     private final By btnLuuThongBao = AppiumBy.xpath(
-            "//*[@content-desc='Lưu' or @text='Lưu' " +
-            "or @content-desc='Xác nhận' or @text='Xác nhận' " +
-            "or @content-desc='OK' or @text='OK']");
+            "//*[@content-desc='Lưu' or @text='Lưu' or @name='Lưu' or @label='Lưu'" +
+            " or @content-desc='Xác nhận' or @text='Xác nhận' or @name='Xác nhận' or @label='Xác nhận'" +
+            " or @content-desc='OK' or @text='OK' or @name='OK' or @label='OK']");
 
     // ─── Constructor ──────────────────────────────────────────────────────────
 
     public ThongTinPhongScr(AppiumDriver driver) {
         super(driver);
+        this.txtMatKhauMoi = byPlatform(driver, 
+                AppiumBy.className("android.widget.EditText"), 
+                AppiumBy.xpath("//XCUIElementTypeTextField | //XCUIElementTypeSecureTextField"));
+        this.txtThongBao = byPlatform(driver, 
+                AppiumBy.className("android.widget.EditText"), 
+                AppiumBy.xpath("//XCUIElementTypeTextField | //XCUIElementTypeTextView"));
     }
 
     // ─── Checks ───────────────────────────────────────────────────────────────

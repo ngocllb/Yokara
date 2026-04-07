@@ -12,9 +12,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Tab Song ca (trong mục Hát) — Android + iOS.
+ * Tab Song ca (trong mục Hát).
+ * <p>Đối chiếu {@code XML android Screen locator/SongCaScr_android.txt}: ô tìm
+ * {@code content-desc='Tìm kiếm bài hát chờ song ca'}; icon tìm header cùng cấu trúc hàng với {@link HatScr}.</p>
  */
 public class SongCaScr extends BaseScr {
+
+    private static final String PLACEHOLDER_SONG_CA = "Tìm kiếm bài hát chờ song ca";
 
     private final By lblBaiHat;
     private final By lblSongCa;
@@ -26,42 +30,10 @@ public class SongCaScr extends BaseScr {
     public SongCaScr(AppiumDriver driver) {
         super(driver);
         this.bottomNav = new BottomNav(driver);
-        this.lblBaiHat = byLabeledText("Bài hát");
-        this.lblSongCa = byLabeledText("Song ca");
-        this.btnSearchHeader = buildSearchHeader(driver);
-        this.txtSearchBox = searchPlaceholder();
-    }
-
-    private static By byLabeledText(String label) {
-        return AppiumBy.xpath(
-                "//*[contains(@content-desc, '" + label + "')"
-                        + " or contains(@name, '" + label + "')"
-                        + " or contains(@label, '" + label + "')"
-                        + " or contains(@value, '" + label + "')]"
-        );
-    }
-
-    private static By buildSearchHeader(AppiumDriver driver) {
-        String android = "//android.view.View[@content-desc='Bài hát']/parent::*//android.widget.ImageView[last()]";
-        if (driver instanceof IOSDriver) {
-            return AppiumBy.xpath(
-                    android
-                            + " | //XCUIElementTypeNavigationBar//XCUIElementTypeButton[last()]"
-                            + " | //XCUIElementTypeNavigationBar//XCUIElementTypeImage[last()]"
-                            + " | //XCUIElementTypeOther[.//XCUIElementTypeStaticText[contains(@name,'Bài hát')]]"
-                            + "//XCUIElementTypeButton[1]"
-            );
-        }
-        return AppiumBy.xpath(android);
-    }
-
-    /** Placeholder ô tìm (Song ca). */
-    private static By searchPlaceholder() {
-        String hint = "Tìm kiếm bài hát";
-        return AppiumBy.xpath(
-                "//*[contains(@content-desc,'" + hint + "') or contains(@name,'" + hint + "') or contains(@label,'" + hint + "')]"
-                        + " | //*[@content-desc='Tìm kiếm bài hát chờ song ca' or @name='Tìm kiếm bài hát chờ song ca']"
-        );
+        this.lblBaiHat = AppiumBy.accessibilityId("Bài hát");
+        this.lblSongCa = AppiumBy.accessibilityId("Song ca");
+        this.btnSearchHeader = byPlatform(driver, HatScr.androidSearchIconHeader(), HatScr.iosSearchIconHeader());
+        this.txtSearchBox = AppiumBy.accessibilityId(PLACEHOLDER_SONG_CA);
     }
 
     private static String escXPath(String raw) {

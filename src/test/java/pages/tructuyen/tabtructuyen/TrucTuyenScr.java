@@ -11,8 +11,8 @@ import pages.tructuyen.tabtructuyen.phong.CuaToiScr;
 import pages.tructuyen.tabtructuyen.phong.TaoPhongScr;
 
 /**
- * Tab Trực tuyến — mỗi control: một locator Android và một locator iOS (bắt từ hierarchy thật),
- * không xâu OR/dự phòng trong cùng một nền tảng.
+ * Tab Trực tuyến — label/nút dùng {@code accessibilityId} khi semantics trùng Android/iOS;
+ * nút tìm (icon) tách {@code byPlatform} theo dump.
  */
 public class TrucTuyenScr extends BaseScr {
 
@@ -34,31 +34,15 @@ public class TrucTuyenScr extends BaseScr {
     public TrucTuyenScr(AppiumDriver driver) {
         super(driver);
         bottomNav = new base.BottomNav(driver);
-        this.lblTrucTuyen = byPlatform(driver, androidLblTrucTuyen(), iosLblTrucTuyen());
-        this.lblKhamPha = byPlatform(driver, androidLblKhamPha(), iosLblKhamPha());
+        this.lblTrucTuyen = AppiumBy.accessibilityId("Trực tuyến");
+        this.lblKhamPha = AppiumBy.accessibilityId("Khám phá");
         this.btnSearch = byPlatform(driver, androidBtnSearch(), iosBtnSearch());
-        this.btnTaoPhong = byPlatform(driver, androidTaoPhong(), iosTaoPhong());
-        this.btnBangXepHang = byPlatform(driver, androidBangXepHang(), iosBangXepHang());
-        this.btnNhiemVu = byPlatform(driver, androidNhiemVu(), iosNhiemVu());
-        this.tabDeCu = byPlatform(driver, androidTabDeCu(), iosTabDeCu());
-        this.tabGanDay = byPlatform(driver, androidTabGanDay(), iosTabGanDay());
-        this.tabCuaToi = byPlatform(driver, androidTabCuaToi(), iosTabCuaToi());
-    }
-
-    private static By androidLblTrucTuyen() {
-        return AppiumBy.xpath("//android.view.View[@content-desc='Trực tuyến']");
-    }
-
-    private static By iosLblTrucTuyen() {
-        return AppiumBy.xpath("//XCUIElementTypeStaticText[@name='Trực tuyến']");
-    }
-
-    private static By androidLblKhamPha() {
-        return AppiumBy.xpath("//android.view.View[@content-desc='Khám phá']");
-    }
-
-    private static By iosLblKhamPha() {
-        return AppiumBy.xpath("//XCUIElementTypeStaticText[@name='Khám phá']");
+        this.btnTaoPhong = AppiumBy.accessibilityId("Tạo phòng");
+        this.btnBangXepHang = AppiumBy.accessibilityId("Bảng xếp hạng");
+        this.btnNhiemVu = AppiumBy.accessibilityId("Nhiệm vụ");
+        this.tabDeCu = AppiumBy.accessibilityId("Đề cử");
+        this.tabGanDay = AppiumBy.accessibilityId("Gần đây");
+        this.tabCuaToi = AppiumBy.accessibilityId("Của tôi");
     }
 
     private static By androidBtnSearch() {
@@ -69,55 +53,6 @@ public class TrucTuyenScr extends BaseScr {
     private static By iosBtnSearch() {
         return AppiumBy.xpath(
                 "//XCUIElementTypeStaticText[@name='Khám phá']/following-sibling::XCUIElementTypeImage[last()]");
-    }
-
-    /** Android: content-desc từ dump; Appium map sang accessibilityId. */
-    private static By androidTaoPhong() {
-        return AppiumBy.accessibilityId("Tạo phòng");
-    }
-
-    private static By iosTaoPhong() {
-        return AppiumBy.accessibilityId("Tạo phòng");
-    }
-
-    private static By androidBangXepHang() {
-        return AppiumBy.accessibilityId("Bảng xếp hạng");
-    }
-
-    private static By iosBangXepHang() {
-        return AppiumBy.accessibilityId("Bảng xếp hạng");
-    }
-
-    private static By androidNhiemVu() {
-        return AppiumBy.accessibilityId("Nhiệm vụ");
-    }
-
-    private static By iosNhiemVu() {
-        return AppiumBy.accessibilityId("Nhiệm vụ");
-    }
-
-    private static By androidTabDeCu() {
-        return AppiumBy.xpath("//android.view.View[@content-desc='Đề cử']");
-    }
-
-    private static By iosTabDeCu() {
-        return AppiumBy.xpath("//XCUIElementTypeStaticText[@name='Đề cử']");
-    }
-
-    private static By androidTabGanDay() {
-        return AppiumBy.xpath("//android.view.View[@content-desc='Gần đây']");
-    }
-
-    private static By iosTabGanDay() {
-        return AppiumBy.xpath("//XCUIElementTypeStaticText[@name='Gần đây']");
-    }
-
-    private static By androidTabCuaToi() {
-        return AppiumBy.xpath("//android.view.View[@content-desc='Của tôi']");
-    }
-
-    private static By iosTabCuaToi() {
-        return AppiumBy.xpath("//XCUIElementTypeStaticText[@name='Của tôi']");
     }
 
     /** Màn kết quả trống — một label accessibility (Flutter semantics) cho cả hai nền tảng. */
@@ -144,7 +79,7 @@ public class TrucTuyenScr extends BaseScr {
     /** Một dòng phòng trong danh sách kết quả (iOS). */
     private static By iosRoomRowById(String id) {
         String esc = escXPath(id);
-        return AppiumBy.xpath("//XCUIElementTypeCell[contains(@name, '" + esc + "')]");
+        return AppiumBy.xpath("//*[contains(@name, '" + esc + "')]");
     }
 
     private static String escXPath(String raw) {

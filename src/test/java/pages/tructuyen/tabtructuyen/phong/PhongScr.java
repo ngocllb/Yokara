@@ -12,34 +12,61 @@ import io.appium.java_client.AppiumDriver;
  *
  * <p>Xuất hiện ngay sau khi tạo phòng thành công và người dùng bấm vào
  * tên phòng đó trong danh sách "Của tôi".</p>
+ *
+ * <p>Nút back: chuỗi {@code Quay lại} trùng Android {@code content-desc} và iOS — xem {@link core.LocatorPolicy}.</p>
  */
 public class PhongScr extends BaseScr {
 
     // ─── In-room common elements ──────────────────────────────────────────────
 
     /** Nút thoát / đóng phòng (góc trên trái) */
-    private final By btnBack = AppiumBy.xpath(
-            "//android.widget.ImageView[@content-desc='Quay lại'] " +
-            "| //android.widget.Button[@content-desc='Quay lại'] " +
-            "| //android.view.View[@content-desc='Quay lại']");
+    private final By btnBack;
 
     /** Nút micro/mute trong phòng */
-    private final By btnMicro = AppiumBy.xpath(
-            "//*[contains(@content-desc,'Micro') or contains(@content-desc,'micro')]");
+    private final By btnMicro;
 
     /** Nút chat / bình luận trong phòng */
-    private final By btnChat = AppiumBy.xpath(
-            "//*[contains(@content-desc,'Bình luận') or contains(@content-desc,'Chat') or contains(@content-desc,'chat')]");
+    private final By btnChat;
 
     /** Nút rời phòng / kết thúc */
-    private final By btnLeave = AppiumBy.xpath(
-            "//*[contains(@content-desc,'Rời phòng') or contains(@content-desc,'Kết thúc') or contains(@content-desc,'Thoát')]");
+    private final By btnLeave;
 
     /** Nút mở Thông tin phòng (ivRoomKara – góc trên header) */
-    private final By btnThongTinPhong = AppiumBy.id("com.yokara.v3:id/ivRoomKara");
+    private final By btnThongTinPhong;
+
+    private final By btnSing;
+    private final By btnGift;
 
     public PhongScr(AppiumDriver driver) {
         super(driver);
+        this.btnBack = byPlatform(driver, 
+                AppiumBy.id("com.yokara.v3:id/lnBackRoom"), 
+                AppiumBy.accessibilityId("ic_close_room"));
+        
+        this.btnMicro = AppiumBy.xpath(
+                "//*[contains(@content-desc,'Micro') or contains(@name,'Micro') or contains(@label,'Micro')"
+                        + " or contains(@content-desc,'micro') or contains(@name,'micro') or contains(@label,'micro')]");
+
+        this.btnChat = byPlatform(driver, 
+                AppiumBy.id("com.yokara.v3:id/tvComment"), 
+                AppiumBy.accessibilityId("Nói gì đi nào!"));
+
+        this.btnLeave = AppiumBy.xpath(
+                "//*[contains(@content-desc,'Rời phòng') or contains(@name,'Rời phòng') or contains(@label,'Rời phòng')"
+                        + " or contains(@content-desc,'Kết thúc') or contains(@name,'Kết thúc') or contains(@label,'Kết thúc')"
+                        + " or contains(@content-desc,'Thoát') or contains(@name,'Thoát') or contains(@label,'Thoát')]");
+        
+        this.btnThongTinPhong = byPlatform(driver, 
+                AppiumBy.id("com.yokara.v3:id/ivRoomKara"), 
+                AppiumBy.xpath("//XCUIElementTypeStaticText[1] | //XCUIElementTypeButton[@name='info' or @label='info' or @name='ic_info']"));
+
+        this.btnSing = byPlatform(driver,
+                AppiumBy.id("com.yokara.v3:id/lnSing"),
+                AppiumBy.accessibilityId("btn_choose_song"));
+
+        this.btnGift = byPlatform(driver,
+                AppiumBy.id("com.yokara.v3:id/ivGift"),
+                AppiumBy.accessibilityId("footer_button_gift"));
     }
 
     // ─── Checks ───────────────────────────────────────────────────────────────
@@ -103,16 +130,19 @@ public class PhongScr extends BaseScr {
         return new CuaToiScr(driver);
     }
 
-    /**
-     * Mở màn hình Thông tin phòng {@link ThongTinPhongScr}.
-     *
-     * <p>Bấm vào nút/icon Thông tin (ⓘ) hoặc tên phòng trên header
-     * để xem và chỉnh sửa thông tin phòng.</p>
-     *
-     * @return ThongTinPhongScr – màn hình thông tin phòng
-     */
+    /** Mở màn hình Thông tin phòng ThongTinPhongScr. */
     public ThongTinPhongScr openThongTinPhong() {
         click(btnThongTinPhong);
         return new ThongTinPhongScr(driver);
+    }
+
+    /** Bấm nút Hát / Chọn bài trong phòng. */
+    public void clickSing() {
+        click(btnSing);
+    }
+
+    /** Bấm nút Tặng quà trong phòng. */
+    public void clickGift() {
+        click(btnGift);
     }
 }

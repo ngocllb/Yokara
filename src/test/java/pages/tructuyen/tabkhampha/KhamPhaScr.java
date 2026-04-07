@@ -30,45 +30,24 @@ public class KhamPhaScr extends BaseScr {
     public KhamPhaScr(AppiumDriver driver) {
         super(driver);
         bottomNav = new base.BottomNav(driver);
-        this.lblTrucTuyen = byLabeledText("Trực tuyến");
-        this.lblKhamPha = byLabeledText("Khám phá");
+        this.lblTrucTuyen = AppiumBy.accessibilityId("Trực tuyến");
+        this.lblKhamPha = AppiumBy.accessibilityId("Khám phá");
         this.btnSearch = buildSearchButton(driver);
-        this.btnXuHuong = byLabeledControl("Xu hướng");
-        this.btnSanhGame = byLabeledControl("Sảnh game");
-        this.btnDanhCa = byLabeledControl("Danh ca");
-        this.btnSongCa = byLabeledControl("Song ca");
-        this.lblTopDaiGia = byLabeledText("Top đại gia");
+        this.btnXuHuong = AppiumBy.accessibilityId("Xu hướng");
+        this.btnSanhGame = AppiumBy.accessibilityId("Sảnh game");
+        this.btnDanhCa = AppiumBy.accessibilityId("Danh ca");
+        this.btnSongCa = AppiumBy.accessibilityId("Song ca");
+        this.lblTopDaiGia = AppiumBy.accessibilityId("Top đại gia");
         this.btnXemThemTopDaiGia = buildXemThemTopDaiGia(driver);
         this.lblTopBaiThu = buildTopBaiThuSection();
     }
 
-    private static By byLabeledText(String label) {
-        return AppiumBy.xpath(
-                "//*[contains(@content-desc, '" + label + "')"
-                        + " or contains(@name, '" + label + "')"
-                        + " or contains(@label, '" + label + "')"
-                        + " or contains(@value, '" + label + "')]"
-        );
-    }
-
-    private static By byLabeledControl(String label) {
-        return AppiumBy.xpath(
-                "//*[@content-desc='" + label + "' or @name='" + label + "' or @label='" + label + "' or @value='" + label + "']"
-                        + " | //*[contains(@content-desc, '" + label + "') or contains(@name, '" + label + "') "
-                        + "or contains(@label, '" + label + "') or contains(@value, '" + label + "')]"
-        );
-    }
-
+    /** Cùng cấu trúc header {@link pages.tructuyen.tabtructuyen.TrucTuyenScr#iosBtnSearch()}. */
     private static By buildSearchButton(AppiumDriver driver) {
-        String android = "//android.view.View[@content-desc='Khám phá']/parent::*//android.widget.ImageView[last()]";
+        String android = "//android.view.View[@content-desc='Khám phá']/following-sibling::android.widget.ImageView[last()]";
         if (driver instanceof IOSDriver) {
             return AppiumBy.xpath(
-                    android
-                            + " | //XCUIElementTypeNavigationBar//XCUIElementTypeButton[last()]"
-                            + " | //XCUIElementTypeNavigationBar//XCUIElementTypeImage[last()]"
-                            + " | //XCUIElementTypeOther[.//XCUIElementTypeStaticText[contains(@name,'Khám phá')]]"
-                            + "//XCUIElementTypeButton[1]"
-            );
+                    "//XCUIElementTypeStaticText[@name='Khám phá']/following-sibling::XCUIElementTypeImage[last()]");
         }
         return AppiumBy.xpath(android);
     }
@@ -92,13 +71,7 @@ public class KhamPhaScr extends BaseScr {
      * Khu “Top bài thu” / “Xem thêm” — bản cũ dùng accessibility một dòng có xuống dòng.
      */
     private static By buildTopBaiThuSection() {
-        String nl = "\n";
-        return AppiumBy.xpath(
-                "//*[contains(@content-desc,'Top bài thu') or contains(@name,'Top bài thu') or contains(@label,'Top bài thu')]"
-                        + "[contains(@content-desc,'Xem thêm') or contains(@name,'Xem thêm') or contains(@label,'Xem thêm')]"
-                        + " | //*[contains(@content-desc,'Top bài thu" + nl + "Xem thêm')]"
-                        + " | //*[contains(@name,'Top bài thu')]"
-        );
+        return AppiumBy.accessibilityId("Top bài thu\nXem thêm");
     }
 
     public base.BottomNav nav() {

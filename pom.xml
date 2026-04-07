@@ -113,6 +113,10 @@
                 <groupId>io.qameta.allure</groupId>
                 <artifactId>allure-maven</artifactId>
                 <version>2.12.0</version>
+                <configuration>
+                    <reportVersion>2.24.0</reportVersion>
+                    <resultsDirectory>${project.basedir}/allure-results</resultsDirectory>
+                </configuration>
             </plugin>
 
         </plugins>
@@ -120,6 +124,68 @@
     </build>
 
     <profiles>
+        <!--
+          LoginMethodTest iOS + sinh Allure HTML + mở trình duyệt (macOS: open).
+          Chạy: mvn verify -Ploginmethod-ios-allure -Dios.noReset=false
+          Jenkins/headless: thêm -Dallure.open.skip=true
+        -->
+        <profile>
+            <id>loginmethod-ios-allure</id>
+            <properties>
+                <allure.open.skip>false</allure.open.skip>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <version>3.2.5</version>
+                        <configuration>
+                            <suiteXmlFiles>
+                                <suiteXmlFile>testng-loginmethod-ios.xml</suiteXmlFile>
+                            </suiteXmlFiles>
+                            <systemPropertyVariables>
+                                <allure.results.directory>${project.basedir}/allure-results</allure.results.directory>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>io.qameta.allure</groupId>
+                        <artifactId>allure-maven</artifactId>
+                        <executions>
+                            <execution>
+                                <id>allure-report-verify</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>report</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>3.2.0</version>
+                        <executions>
+                            <execution>
+                                <id>open-allure-report-browser</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <skip>${allure.open.skip}</skip>
+                                    <executable>open</executable>
+                                    <arguments>
+                                        <argument>${project.build.directory}/site/allure-maven-plugin/index.html</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
         <!-- mvn test -Psmoke-parallel : Android+iOS song song, 1 method -->
         <profile>
             <id>smoke-parallel</id>
@@ -148,6 +214,47 @@
                         <configuration>
                             <suiteXmlFiles>
                                 <suiteXmlFile>testng-ios-audit.xml</suiteXmlFile>
+                            </suiteXmlFiles>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <!-- mvn test -Pios-pagesource : dump page source → target/ios-page-sources/<slug>.xml (mở đúng màn trên iPhone trước) -->
+        <!-- Tùy chọn: mvn test -Pios-pagesource -DiosPageSlug=ten_man -->
+        <profile>
+            <id>ios-pagesource</id>
+            <properties>
+                <iosPageSlug/>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <suiteXmlFiles>
+                                <suiteXmlFile>testng-ios-pagesource.xml</suiteXmlFile>
+                            </suiteXmlFiles>
+                            <systemPropertyVariables>
+                                <iosPageSlug>${iosPageSlug}</iosPageSlug>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <!-- mvn test -Pios-tab-screens : dump Trang chủ / Trực tuyến / Hát / Tin nhắn (không mở Tôi) -->
+        <profile>
+            <id>ios-tab-screens</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <suiteXmlFiles>
+                                <suiteXmlFile>testng-ios-tab-screens.xml</suiteXmlFile>
                             </suiteXmlFiles>
                         </configuration>
                     </plugin>

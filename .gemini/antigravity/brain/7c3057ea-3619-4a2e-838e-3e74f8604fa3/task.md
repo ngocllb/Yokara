@@ -1,0 +1,23 @@
+# iOS Locator Audit & Refactoring Tasks
+
+- `[x]` Phase 1: Setup & Data Collection
+    - `[x]` Create task list
+    - `[x]` Provide iOS XML dump helper script to user
+- `[x]` Phase 2: Refactor Page Objects (Existing XMLs)
+    - `[x]` AccountScr.java (Verified - OK)
+    - `[x]` ToiProfileScr.java (Verified - OK)
+    - `[x]` LoginMethodScr.java (Verified - OK)
+    - `[x]` LoginPhoneScr.java (Verified - OK)
+    - `[x]` LoginUIDScr.java (Verified - OK)
+    - `[x]` OtpVerificationScr.java (Verified - OK)
+- `[x]` Phase 3: Review & Refactor (New/Missing XMLs)
+    - `[x]` TrangChuScr.java / BottomNav.java (Verified - OK)
+    - `[x]` HatScr.java (Music tab - Verified - OK)
+    - `[x]` SongCaScr.java (Verified - OK)
+    - `[x]` PhongScr.java (Verified & Updated iOS locators: ic_close_room, btn_choose_song, etc.)
+    - `[x]` KhamPhaScr.java / TrucTuyenScr.java (Verified & Updated iosRoomRowById)
+    - `[x]` TinNhanScr.java (Verified & Updated notification locators)
+- `[x]` Phase 4: Final Verification
+    - `[x]` Audit all core screens against real iOS XML dumps
+    - `[x]` Ensure strict locator priority (Accessibility ID > ID > XPath)
+    - `[x]` Verify "No sleep" rule across all refactored classes

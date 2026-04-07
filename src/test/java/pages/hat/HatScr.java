@@ -12,9 +12,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Tab Hát — Bài hát / Song ca — Android + iOS.
+ * Tab Hát — Bài hát / Song ca.
+ * <p>Đối chiếu {@code XML android Screen locator/HatScr_android.txt}: icon tìm là {@code ImageView}
+ * ngay sau {@code content-desc='Song ca'}; ô tìm có {@code content-desc='Nhập tên bài hát, thành viên hoặc ID'}.</p>
  */
 public class HatScr extends BaseScr {
+
+    private static final String PLACEHOLDER_TIM_KIEM =
+            "Nhập tên bài hát, thành viên hoặc ID";
 
     private final By lblBaiHat;
     private final By lblSongCa;
@@ -28,55 +33,29 @@ public class HatScr extends BaseScr {
     public HatScr(AppiumDriver driver) {
         super(driver);
         this.bottomNav = new BottomNav(driver);
-        this.lblBaiHat = byIdThenFallback(driver, null, "Bài hát", byLabeledText("Bài hát"));
-        this.lblSongCa = byIdThenFallback(driver, null, "Song ca", byLabeledText("Song ca"));
-        this.btnSearchHeader = byIdThenFallback(driver, null, null, buildSearchHeaderFallback());
-        this.txtSearchBox = byIdThenFallback(
-                driver,
-                null,
-                "Nhập tên bài hát, thành viên hoặc ID",
-                searchPlaceholderFallback());
-        this.btnXemThemThanTuong = byIdThenFallback(driver, null, "Xem thêm", byLabeledControl("Xem thêm"));
+        this.lblBaiHat = AppiumBy.accessibilityId("Bài hát");
+        this.lblSongCa = AppiumBy.accessibilityId("Song ca");
+        this.btnSearchHeader = byPlatform(driver, androidSearchIconHeader(), iosSearchIconHeader());
+        this.txtSearchBox = AppiumBy.accessibilityId(PLACEHOLDER_TIM_KIEM);
+        this.btnXemThemThanTuong = AppiumBy.accessibilityId("Xem thêm");
     }
 
-    private static By byLabeledText(String label) {
+    /**
+     * Android: {@code HatScr_android.txt} — {@code ImageView} liền sau tab Song ca (không có {@code content-desc}).
+     */
+    static By androidSearchIconHeader() {
         return AppiumBy.xpath(
-                "//*[contains(@content-desc, '" + label + "')"
-                        + " or contains(@name, '" + label + "')"
-                        + " or contains(@label, '" + label + "')"
-                        + " or contains(@value, '" + label + "')]"
-        );
+                "//android.view.View[@content-desc='Song ca']/following-sibling::android.widget.ImageView[1]");
     }
 
-    private static By byLabeledControl(String label) {
+    /**
+     * iOS: cùng thứ tự header với Trực tuyến (StaticText Bài hát / Song ca → phần tử tìm kiếm kế tiếp).
+     */
+    static By iosSearchIconHeader() {
         return AppiumBy.xpath(
-                "//*[@content-desc='" + label + "' or @name='" + label + "' or @label='" + label + "' or @value='" + label + "']"
-                        + " | //*[contains(@content-desc, '" + label + "') or contains(@name, '" + label + "') "
-                        + "or contains(@label, '" + label + "') or contains(@value, '" + label + "')]"
-        );
-    }
-
-    /** Sau khi thử accessibility: Android + iOS (XPath). */
-    private static By buildSearchHeaderFallback() {
-        return AppiumBy.xpath(
-                "//android.view.View[@content-desc='Bài hát']/parent::*//android.widget.ImageView[last()]"
-                        + " | //XCUIElementTypeStaticText[@name='5']/following-sibling::XCUIElementTypeImage[1]"
-                        + " | //XCUIElementTypeNavigationBar//XCUIElementTypeButton[last()]"
-                        + " | //XCUIElementTypeNavigationBar//XCUIElementTypeImage[last()]"
-                        + " | //XCUIElementTypeOther[.//XCUIElementTypeStaticText[@name='Bài hát']]"
-                        + "//XCUIElementTypeButton[1]"
-        );
-    }
-
-    /** Dự phòng ô placeholder: content-desc Android + name/label iOS. */
-    private static By searchPlaceholderFallback() {
-        String hint = "Nhập tên bài hát";
-        return AppiumBy.xpath(
-                "//*[contains(@content-desc,'" + hint + "')]"
-                        + " | //*[@content-desc='Nhập tên bài hát, thành viên hoặc ID']"
-                        + " | //*[contains(@name,'" + hint + "') or contains(@label,'" + hint + "')]"
-                        + " | //*[@name='Nhập tên bài hát, thành viên hoặc ID' or @label='Nhập tên bài hát, thành viên hoặc ID']"
-        );
+                "//XCUIElementTypeStaticText[@name='Bài hát']"
+                        + "/following-sibling::XCUIElementTypeStaticText[@name='Song ca']"
+                        + "/following-sibling::*[1]");
     }
 
     private static String escXPath(String raw) {

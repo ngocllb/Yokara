@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<AppiumAUT>
+  <XCUIElementTypeApplication type="XCUIElementTypeApplication" name="Yokara" label="Yokara" enabled="true" visible="true" accessible="false" x="0" y="0" width="428" height="926" index="0" traits="" processId="2591" bundleId="com.yokara">
+    <XCUIElementTypeWindow type="XCUIElementTypeWindow" enabled="true" visible="true" accessible="false" x="0" y="0" width="428" height="926" index="0" traits="">
+      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="428" height="926" index="0" traits="">
+        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="428" height="926" index="0" traits="">
+          <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="428" height="926" index="0" traits="">
+            <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="428" height="926" index="0" traits="">
+              <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="428" height="926" index="0" traits="">
+                <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="428" height="926" index="0" traits="">
+                  <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="428" height="926" index="0" traits="">
+                    <XCUIElementTypeImage type="XCUIElementTypeImage" name="backgroundNewLive" label="backgroundNewLive" enabled="true" visible="true" accessible="true" x="0" y="0" width="428" height="538" index="1" traits="Image"/>
+                    <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Hvjvhccucuv" name="Hvjvhccucuv" label="Hvjvhccucuv" enabled="true" visible="true" accessible="true" x="55" y="48" width="85" height="19" index="3" traits="StaticText"/>
+                    <XCUIElementTypeImage type="XCUIElementTypeImage" name="ic_close_room" label="ic_close_room" enabled="true" visible="true" accessible="true" x="389" y="59" width="39" height="13" index="9" traits="Image"/>
+                    <XCUIElementTypeTable type="XCUIElementTypeTable" enabled="true" visible="true" accessible="false" x="16" y="495" width="396" height="352" index="15" traits="">
+                      <XCUIElementTypeCell type="XCUIElementTypeCell" enabled="true" visible="true" accessible="true" x="16" y="495" width="396" height="70" index="0" traits="">
+                        <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Thông báo: Xin chào mừng bạn vào phòng, hãy cư xử văn minh, lịch sự!" name="Thông báo: Xin chào mừng bạn vào phòng, hãy cư xử văn minh, lịch sự!" label="Thông báo: Xin chào mừng bạn vào phòng, hãy cư xử văn minh, lịch sự!" enabled="true" visible="true" accessible="true" x="23" y="504" width="380" height="52" index="0" traits="StaticText"/>
+                      </XCUIElementTypeCell>
+                    </XCUIElementTypeTable>
+                    <XCUIElementTypeImage type="XCUIElementTypeImage" name="ic_hide_chairs" label="ic_hide_chairs" enabled="true" visible="true" accessible="true" x="0" y="404" width="36" height="24" index="16" traits="Image"/>
+                    <XCUIElementTypeImage type="XCUIElementTypeImage" name="no_mc_new" label="no_mc_new" enabled="true" visible="true" accessible="true" x="16" y="438" width="40" height="41" index="17" traits="Image"/>
+                    <XCUIElementTypeImage type="XCUIElementTypeImage" name="btn_choose_song" label="btn_choose_song" enabled="true" visible="true" accessible="true" x="372" y="438" width="40" height="41" index="20" traits="Image"/>
+                    <XCUIElementTypeImage type="XCUIElementTypeImage" name="ic_queuing" label="ic_queuing" enabled="true" visible="true" accessible="true" x="25" y="863" width="19" height="22" index="21" traits="Image"/>
+                    <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Nói gì đi nào!" name="Nói gì đi nào!" label="Nói gì đi nào!" enabled="true" visible="true" accessible="true" x="78" y="863" width="103" height="21" index="23" traits="StaticText"/>
+                    <XCUIElementTypeImage type="XCUIElementTypeImage" name="footer_button_gift" label="footer_button_gift" enabled="true" visible="true" accessible="true" x="375" y="855" width="37" height="37" index="25" traits="Image"/>
+                  </XCUIElementTypeOther>
+                </XCUIElementTypeOther>
+              </XCUIElementTypeOther>
+            </XCUIElementTypeOther>
+          </XCUIElementTypeOther>
+        </XCUIElementTypeOther>
+      </XCUIElementTypeOther>
+    </XCUIElementTypeWindow>
+  </XCUIElementTypeApplication>
+</AppiumAUT>

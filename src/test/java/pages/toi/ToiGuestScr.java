@@ -8,27 +8,38 @@ import org.openqa.selenium.support.ui.ExpectedConditions;
 import pages.toi.login.AccountScr;
 import pages.toi.login.LoginMethodScr;
 
+import io.appium.java_client.ios.IOSDriver;
+
+/**
+ * Tab Tôi khi chưa đăng nhập — một locator {@code accessibilityId} cho nút Đăng nhập (đối chiếu dump).
+ */
 public class ToiGuestScr extends BaseScr {
 
-    private By btnDangNhap = AppiumBy.xpath(
-            "//*[contains(@content-desc, 'Đăng nhập') or contains(@content-desc, 'ĐĂNG NHẬP')"
-                    + " or contains(@name, 'Đăng nhập') or contains(@label, 'Đăng nhập')]");
+    private final By btnDangNhap = AppiumBy.accessibilityId("Đăng nhập");
 
-    public ToiGuestScr(AppiumDriver driver){
+    public ToiGuestScr(AppiumDriver driver) {
         super(driver);
     }
 
     public boolean isGuest(){
-        // Nếu tìm thấy nút Đăng nhập thì là Guest
-        return isDisplayed(btnDangNhap);
+        // Nếu tìm thấy nút Đăng nhập thì là Guest (chờ tối đa 3s cho transition)
+        try {
+            wait.until(ExpectedConditions.visibilityOfElementLocated(btnDangNhap));
+            return true;
+        } catch (Exception e) {
+            return isDisplayed(btnDangNhap);
+        }
     }
 
-    public BaseScr clickLogin(){
+    public BaseScr clickLogin() {
+        if (driver instanceof IOSDriver) {
+            select(btnDangNhap);
+        } else {
+            click(btnDangNhap);
+        }
 
-        click(btnDangNhap);
-
-        // nếu có account lưu
-        if(isDisplayed(AppiumBy.accessibilityId("Đăng nhập bằng tài khoản khác"))){
+        // nếu có màn account lưu — check bằng marker ID: thay vì nút ở bottom (chờ tối đa 5s cho UI load)
+        if (AccountScr.isAccountScr(driver, 5)) {
             return new AccountScr(driver);
         }
 

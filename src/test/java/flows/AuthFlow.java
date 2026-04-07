@@ -20,68 +20,71 @@ public class AuthFlow {
     }
 
     public ToiProfileScr login(String method, String... args) {
+        BaseScr base = new BaseScr(driver);
+        
+        // 1. Chuẩn bị: Ẩn bàn phím và xử lý popup khởi động
+        hideKeyboardIfPossible();
+        base.handleStartupPopups();
 
-        try {
-            ((io.appium.java_client.HidesKeyboard) driver).hideKeyboard();
-        } catch (Exception e) {
-            // Keyboard already hidden or not supported
-        }
-        // Xử lý popup nếu có che khuất tabbar
-        new BaseScr(driver).handleStartupPopups();
+        // 2. Chuyển sang tab Tôi
+        ensureToiTabVisible();
 
-        // Cưỡng bức về tab Tôi trước khi tìm nút Đăng nhập
-        try {
-            driver.findElement(io.appium.java_client.AppiumBy.accessibilityId("Tôi")).click();
-        } catch (Exception e) {
-            // Đã ở tab Tôi hoặc lỗi nhẹ, bỏ qua
-        }
-
+        // 3. Chờ màn hình Guest và click Đăng nhập
         ToiGuestScr guestPage = new ToiGuestScr(driver);
-        // Thay thế sleep(5000) bằng dynamic wait tích hợp sẵn trong waitForGuestPage
-        guestPage.waitForGuestPage(); 
-        BaseScr page = guestPage.clickLogin();
+        guestPage.waitForGuestPage();
+        BaseScr pageAfterClick = guestPage.clickLogin();
 
+        // 4. Xử lý logic chuyển tiếp (AccountScr -> LoginMethodScr)
         LoginMethodScr methodPage;
-
-        if (page instanceof AccountScr) {
-            AccountScr AccountScr = (AccountScr) page;
-            AccountScr.selectAnotherMethodLogin();
+        if (pageAfterClick instanceof AccountScr accountScr) {
+            accountScr.selectAnotherMethodLogin();
+            LoginMethodScr.waitForLoginMethodScreen(driver);
             methodPage = new LoginMethodScr(driver);
         } else {
-            methodPage = (LoginMethodScr) page;
+            methodPage = (LoginMethodScr) pageAfterClick;
         }
 
+        // 5. Thực hiện đăng nhập theo phương thức
+        return performLoginAction(method, methodPage, args);
+    }
+
+    private void ensureToiTabVisible() {
+        try {
+            // Sử dụng BottomNav để có logic fallback và wait ổn định cho iOS
+            new base.BottomNav(driver).goToToi();
+        } catch (Exception e) {
+            // Log nhẹ nhàng hoặc bỏ qua nếu đã ở đúng tab
+            System.out.println("[AuthFlow] Tab 'Tôi' navigation issue: " + e.getMessage());
+        }
+    }
+
+    private void hideKeyboardIfPossible() {
+        try {
+            if (driver instanceof io.appium.java_client.HidesKeyboard) {
+                ((io.appium.java_client.HidesKeyboard) driver).hideKeyboard();
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private ToiProfileScr performLoginAction(String method, LoginMethodScr methodPage, String[] args) {
         switch (method.toLowerCase()) {
-
-            case "uid":
+            case "uid" -> {
                 validateArgs(method, args, 2);
-
-                LoginUIDScr uidPage =
-                        (LoginUIDScr) methodPage.loginWith("uid");
-
+                LoginUIDScr uidPage = (LoginUIDScr) methodPage.loginWith("uid");
                 return uidPage.loginByUID(args[0], args[1]);
-
-            case "phone":
+            }
+            case "phone" -> {
                 validateArgs(method, args, 2);
-
-                LoginPhoneScr phonePage =
-                        (LoginPhoneScr) methodPage.loginWith("phone");
-
-                OtpVerificationScr otpPage =
-                        phonePage.goToOtpPage(args[0]);
-
+                LoginPhoneScr phonePage = (LoginPhoneScr) methodPage.loginWith("phone");
+                OtpVerificationScr otpPage = phonePage.goToOtpPage(args[0]);
                 return otpPage.submitValidOtp(args[1]);
-
-            case "facebook":
-                FbGoogleAccountScr socialPage =
-                        (FbGoogleAccountScr) methodPage.loginWith("facebook");
-
+            }
+            case "facebook" -> {
+                FbGoogleAccountScr socialPage = (FbGoogleAccountScr) methodPage.loginWith("facebook");
                 socialPage.selectFirstAccount();
-
                 return new ToiProfileScr(driver);
-
-            default:
-                throw new RuntimeException("Unsupported login method: " + method);
+            }
+            default -> throw new RuntimeException("Unsupported login method: " + method);
         }
     }
 
@@ -93,4 +96,3 @@ public class AuthFlow {
         }
     }
 }
-

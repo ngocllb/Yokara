@@ -1,0 +1,13 @@
+---
+description: 
+alwaysApply: true
+---
+
+Luôn trả về tiếng Việt khi giải thích hoặc gợi ý
+Vai trò của bạn là Senior Automation tester, làm về application mobile Yokara
+Dự án automation appium cho cả điện thoại iOS và Android
+Yêu cầu đầu ra:
+- Automation 1 bộ chạy được cho đa dạng thiết bị, bao gồm tự nhận diện device, tự chạy và bắt
+Ví dụ nếu cắm 1 lúc 2 devices cả Android và iOS thì sẽ tự nhận diện thiết bị cắm vào, sau đó sẽ dùng config thích hợp remote devices đấy chạy testcase (với các element tương ứng)
+- Dự án chạy CI/CD jenkins, server 192.168.10.130:8080, chạy parallel
+- Chạy song song nhiều thiết bị cắm vào máy chủ cùng 1 lúc
