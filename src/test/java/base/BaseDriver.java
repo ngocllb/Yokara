@@ -36,28 +36,21 @@ public class BaseDriver {
                       @Optional String suiteUdid,
                       @Optional String suiteDeviceLabel,
                       @Optional String suiteDeviceFolder) {
+        String runPlatform = normalizePlatform(System.getProperty("platform"));
+        String runAndroidUdid = normalizeRaw(System.getProperty("android.udid"));
+        String runIosUdid = normalizeRaw(System.getProperty("ios.udid"));
 
-        String runPlatform = normalize(System.getProperty("platform"));
-        String runAndroidUdid = normalize(System.getProperty("android.udid"));
-        String runIosUdid = normalize(System.getProperty("ios.udid"));
-
-        String requestedPlatform = normalize(suitePlatform);
-        String requestedUdid = normalize(suiteUdid);
-
-        // Nếu test invocation không truyền platform, dùng platform của branch hiện tại
+        String requestedPlatform = normalizePlatform(suitePlatform);
+        String requestedUdid = normalizeRaw(suiteUdid);
         if (requestedPlatform == null) {
             requestedPlatform = runPlatform;
         }
-
-        // Nếu branch hiện tại đã được khóa platform, skip mọi invocation khác platform
         if (runPlatform != null && requestedPlatform != null && !runPlatform.equals(requestedPlatform)) {
             throw new SkipException(String.format(
                     "[Skip] Invocation platform=%s không thuộc branch hiện tại platform=%s",
                     requestedPlatform, runPlatform
             ));
         }
-
-        // Nếu invocation không truyền UDID, lấy từ system property đúng branch
         if (requestedUdid == null) {
             if ("android".equals(requestedPlatform)) {
                 requestedUdid = runAndroidUdid;
@@ -69,14 +62,12 @@ public class BaseDriver {
         if (requestedPlatform == null) {
             throw new SkipException("[Skip] Không xác định được platform cho test invocation hiện tại.");
         }
-
-        // Pre-check online device theo platform đã khóa
         if ("android".equals(requestedPlatform)) {
             List<String> online = DeviceManager.getAndroidPhysicalDevices();
             if (online.isEmpty()) {
                 throw new SkipException("[Skip] Không có thiết bị Android nào kết nối – bỏ qua test này.");
             }
-            if (requestedUdid != null && !online.contains(requestedUdid)) {
+            if (requestedUdid != null && !containsIgnoreCase(online, requestedUdid)) {
                 throw new SkipException("[Skip] Android UDID không còn online: " + requestedUdid);
             }
         } else if ("ios".equals(requestedPlatform)) {
@@ -84,7 +75,7 @@ public class BaseDriver {
             if (online.isEmpty()) {
                 throw new SkipException("[Skip] Không có thiết bị iOS nào kết nối – bỏ qua test này.");
             }
-            if (requestedUdid != null && !online.contains(requestedUdid)) {
+            if (requestedUdid != null && !containsIgnoreCase(online, requestedUdid)) {
                 throw new SkipException("[Skip] iOS UDID không còn online: " + requestedUdid);
             }
         } else {
@@ -135,12 +126,32 @@ public class BaseDriver {
         ensureIosMainTabBarVisible();
     }
 
-    private String normalize(String value) {
+    private String normalizePlatform(String value) {
         if (value == null) {
             return null;
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed.toLowerCase();
+    }
+
+    private String normalizeRaw(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private boolean containsIgnoreCase(List<String> values, String target) {
+        if (target == null) {
+            return false;
+        }
+        for (String value : values) {
+            if (value != null && value.equalsIgnoreCase(target)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void ensureIosMainTabBarVisible() {
