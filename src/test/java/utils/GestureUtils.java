@@ -2,8 +2,11 @@
 
 package utils;
 
+import io.appium.java_client.AppiumDriver;
 import io.appium.java_client.android.AndroidDriver;
 import org.openqa.selenium.Dimension;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.interactions.Pause;
 import org.openqa.selenium.interactions.PointerInput;
 import org.openqa.selenium.interactions.Sequence;
 
@@ -53,6 +56,32 @@ public class GestureUtils {
         longPress.addAction(finger.createPointerUp(PointerInput.MouseButton.LEFT.asArg()));
 
         driver.perform(Collections.singletonList(longPress));
+    }
+
+    /** Tap một điểm theo tọa độ viewport (iOS/Android) — tránh {@code mobile: clickGesture} chỉ x,y khi server không hỗ trợ. */
+    public static void tapViewport(AppiumDriver driver, int x, int y) {
+        PointerInput finger = new PointerInput(PointerInput.Kind.TOUCH, "finger");
+        Sequence tap = new Sequence(finger, 1);
+        tap.addAction(finger.createPointerMove(Duration.ZERO,
+                PointerInput.Origin.viewport(), x, y));
+        tap.addAction(finger.createPointerDown(PointerInput.MouseButton.LEFT.asArg()));
+        tap.addAction(new Pause(finger, Duration.ofMillis(50)));
+        tap.addAction(finger.createPointerUp(PointerInput.MouseButton.LEFT.asArg()));
+        driver.perform(Collections.singletonList(tap));
+    }
+
+    /**
+     * Tap tại tâm phần tử (W3C pointer) — iOS {@code StaticText} đôi khi không nhận {@code WebElement#click()}
+     * nhưng vẫn nhận tap tọa độ.
+     */
+    public static void tapElementCenter(AppiumDriver driver, WebElement el) {
+        org.openqa.selenium.Rectangle r = el.getRect();
+        int x = r.getX() + Math.max(1, r.getWidth()) / 2;
+        int y = r.getY() + Math.max(1, r.getHeight()) / 2;
+        Dimension win = driver.manage().window().getSize();
+        x = Math.max(2, Math.min(x, win.getWidth() - 3));
+        y = Math.max(2, Math.min(y, win.getHeight() - 3));
+        tapViewport(driver, x, y);
     }
 
 }

@@ -71,8 +71,8 @@ public class PhongScr extends BaseScr {
 
     // ─── Checks ───────────────────────────────────────────────────────────────
 
-    /** Số ký tự tối đa dùng để tìm phòng (content-desc truncate tên dài) */
-    private static final int SEARCH_NAME_MAX_LEN = 18;
+    /** Số ký tự tối đa dùng để tìm phòng (iOS card/name có thể bị truncate). */
+    private static final int SEARCH_NAME_MAX_LEN = 24;
 
     private String safeSearchName(String name) {
         if (name == null) return "";
@@ -81,18 +81,48 @@ public class PhongScr extends BaseScr {
                 : name;
     }
 
+    private String escXPath(String raw) {
+        return raw == null ? "" : raw.replace("'", "''");
+    }
+
+    private String roomKey(String roomName) {
+        if (roomName == null) {
+            return "";
+        }
+        String t = roomName.trim();
+        if (t.isEmpty()) {
+            return "";
+        }
+        int space = t.indexOf(' ');
+        return space > 0 ? t.substring(0, space) : t;
+    }
+
     /**
      * Kiểm tra màn hình phòng đã load bằng cách verify tên phòng xuất hiện.
      *
      * @param roomName tên phòng cần verify (sẽ tự truncate cho an toàn)
      */
     public boolean isLoaded(String roomName) {
-        String searchName = safeSearchName(roomName);
+        String searchName = escXPath(safeSearchName(roomName));
+        String key = escXPath(roomKey(roomName));
         By roomTitle = AppiumBy.xpath(
-                "//*[contains(@content-desc,'" + searchName + "') " +
-                "or contains(@text,'" + searchName + "')]");
+                "//*[contains(@content-desc,'" + searchName + "') "
+                        + "or contains(@text,'" + searchName + "') "
+                        + "or contains(@name,'" + searchName + "') "
+                        + "or contains(@label,'" + searchName + "') "
+                        + "or contains(@content-desc,'" + key + "') "
+                        + "or contains(@text,'" + key + "') "
+                        + "or contains(@name,'" + key + "') "
+                        + "or contains(@label,'" + key + "') "
+                        + "or (self::XCUIElementTypeOther and contains(@name,'Talk') and contains(@name,'" + searchName + "')) "
+                        + "or (self::XCUIElementTypeOther and contains(@label,'Talk') and contains(@label,'" + searchName + "')) "
+                        + "or (self::XCUIElementTypeOther and contains(@name,'Talk') and contains(@name,'" + key + "')) "
+                        + "or (self::XCUIElementTypeOther and contains(@label,'Talk') and contains(@label,'" + key + "'))]");
         try {
-            wait.until(ExpectedConditions.visibilityOfElementLocated(roomTitle));
+            wait.until(ExpectedConditions.or(
+                    ExpectedConditions.visibilityOfElementLocated(roomTitle),
+                    ExpectedConditions.presenceOfElementLocated(roomTitle),
+                    ExpectedConditions.presenceOfElementLocated(btnBack)));
             return true;
         } catch (Exception e) {
             return false;

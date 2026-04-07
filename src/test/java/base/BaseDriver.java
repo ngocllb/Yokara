@@ -95,6 +95,7 @@ public class BaseDriver {
 
         // Xử lý các popup khi vừa mở app (EULA, Permission)
         new BaseScr(driver).handleStartupPopups();
+        handleIosLaunchBannerIfPresent();
         ensureIosMainTabBarVisible();
     }
 
@@ -108,9 +109,11 @@ public class BaseDriver {
         }
         By trangChu = AppiumBy.accessibilityId("Trang chủ");
         By toi = AppiumBy.accessibilityId("Tôi");
-        WebDriverWait tabWait = new WebDriverWait(driver, Duration.ofSeconds(12));
+        // iOS mới / sau cold start: tree + animation chậm hơn — tránh race với test đầu tiên
+        WebDriverWait tabWait = new WebDriverWait(driver, Duration.ofSeconds(22));
         try {
             tabWait.until(d -> !d.findElements(trangChu).isEmpty() || !d.findElements(toi).isEmpty());
+            waitIosTabBarSettled();
             return;
         } catch (TimeoutException e) {
             System.out.println("[BaseDriver] iOS: chưa thấy thanh tab sau activateApp — thử terminate + activate");
@@ -123,11 +126,57 @@ public class BaseDriver {
             // Appium's activateApp usually handles the restart well.
             app.activateApp(bid);
             new BaseScr(driver).handleStartupPopups();
-            WebDriverWait afterRelaunch = new WebDriverWait(driver, Duration.ofSeconds(25));
+            handleIosLaunchBannerIfPresent();
+            WebDriverWait afterRelaunch = new WebDriverWait(driver, Duration.ofSeconds(35));
             afterRelaunch.until(d -> !d.findElements(trangChu).isEmpty() || !d.findElements(toi).isEmpty());
+            waitIosTabBarSettled();
         } catch (Exception ex) {
             throw new RuntimeException(
                     "[BaseDriver] iOS: không đưa app về màn có bottom bar (Trang chủ / Tôi): " + ex.getMessage(), ex);
+        }
+    }
+
+    /**
+     * iOS: sau launch có thể có banner quảng cáo full màn với nút "Bỏ qua" (Image accessibility).
+     * Nếu có thì bấm bỏ qua trước khi kiểm tra tab bar để tránh kẹt ở overlay.
+     */
+    private void handleIosLaunchBannerIfPresent() {
+        if (!(driver instanceof IOSDriver)) {
+            return;
+        }
+        By btnBoQua = AppiumBy.accessibilityId("Bỏ qua");
+        try {
+            List<org.openqa.selenium.WebElement> skips = driver.findElements(btnBoQua);
+            if (skips.isEmpty()) {
+                return;
+            }
+            org.openqa.selenium.WebElement skip = skips.get(0);
+            try {
+                skip.click();
+            } catch (Exception clickEx) {
+                // iOS image đôi khi click() không ăn, fallback theo elementId.
+                driver.executeScript("mobile: clickGesture",
+                        java.util.Map.of("elementId", ((org.openqa.selenium.remote.RemoteWebElement) skip).getId()));
+            }
+            System.out.println("[BaseDriver] iOS: đã dismiss banner bằng nút 'Bỏ qua'");
+            // Đợi nhẹ cho overlay biến mất / về màn Hát.
+            new WebDriverWait(driver, Duration.ofSeconds(8)).until(d ->
+                    d.findElements(btnBoQua).isEmpty()
+                            || !d.findElements(AppiumBy.accessibilityId("Bài hát")).isEmpty()
+                            || !d.findElements(AppiumBy.accessibilityId("Song ca")).isEmpty());
+        } catch (Exception e) {
+            System.out.println("[BaseDriver] iOS: xử lý banner 'Bỏ qua' lỗi: " + e.getMessage());
+        }
+    }
+
+    /** Sau khi có Trang chủ/Tôi — chờ thêm label tab Trực tuyến xuất hiện trong tree (giảm flake sau activate). */
+    private void waitIosTabBarSettled() {
+        try {
+            new WebDriverWait(driver, Duration.ofSeconds(15)).until(d ->
+                    !d.findElements(AppiumBy.xpath("//*[contains(@name,'Trực tuyến')]")).isEmpty()
+                            || !d.findElements(AppiumBy.accessibilityId("Trực tuyến")).isEmpty());
+        } catch (TimeoutException ignored) {
+            // vẫn cho test chạy — một số build chỉ expose icon không có chuỗi này
         }
     }
 

@@ -1,6 +1,6 @@
 <!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
-<!-- parallel=tests: Android + iOS cùng lúc; driver theo ThreadLocal + cổng riêng mỗi session -->
-<suite name="Yokara Multi-Device (USB thật)" parallel="tests" thread-count="2">
+<!-- none: cùng một máy + một iPhone → không chạy 2 session Appium song song (WDA/tab bar flake). Jenkins nhiều agent: tách job hoặc dùng profile parallel riêng. -->
+<suite name="Yokara Multi-Device (USB thật)" parallel="none">
 
     <listeners>
         <listener class-name="io.qameta.allure.testng.AllureTestNg"/>

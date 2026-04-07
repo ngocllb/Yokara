@@ -1,11 +1,15 @@
 package pages.tructuyen.tabtructuyen.phong;
 
 import org.openqa.selenium.By;
+import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
 
 import base.BaseScr;
 import io.appium.java_client.AppiumBy;
 import io.appium.java_client.AppiumDriver;
+
+import java.time.Duration;
 
 public class TaoPhongScr extends BaseScr {
 
@@ -36,6 +40,24 @@ public class TaoPhongScr extends BaseScr {
 
     public TaoPhongScr(AppiumDriver driver) {
         super(driver);
+    }
+
+    /** Marker màn tạo phòng — dùng nhận diện sau khi bấm Tạo phòng ở Trực tuyến. */
+    public static boolean isPresent(AppiumDriver driver) {
+        try {
+            return !driver.findElements(AppiumBy.accessibilityId("Đặt tên phòng")).isEmpty();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public static boolean waitUntilPresent(AppiumDriver driver, Duration timeout) {
+        try {
+            new WebDriverWait(driver, timeout).until(d -> isPresent((AppiumDriver) d));
+            return true;
+        } catch (TimeoutException e) {
+            return false;
+        }
     }
 
     public CuaToiScr createRoom(String roomName, String privateStatus, String password) {

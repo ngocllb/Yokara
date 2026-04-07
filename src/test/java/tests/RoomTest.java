@@ -14,6 +14,14 @@ import utils.StepUtils;
 
 public class RoomTest extends BaseDriver {
 
+    /**
+     * iOS card phòng thường truncate phần cuối; đặt mã unique ở đầu để locator luôn còn lại sau truncate.
+     */
+    private static String buildUniqueRoomName() {
+        String key = "r" + Long.toString(System.currentTimeMillis(), 36);
+        return key + " ngoc lele bao";
+    }
+
     @Test
     public void testCreatePrivateRoom() {
         BottomNav bottomNav = new BottomNav(driver);
@@ -25,13 +33,12 @@ public class RoomTest extends BaseDriver {
             () -> Assert.assertTrue(trucTuyenScr.isLoaded(), "Không ở tab Trực tuyến")
         );
 
-        TaoPhongScr taoPhongScr = StepUtils.step("Mở màn hình Tạo phòng (tự đăng nhập nếu cần)", () -> 
-            trucTuyenScr.clickTaoPhong(guestPage -> 
-                new flows.AuthFlow(driver).loginFromGuestPage(guestPage, "uid", "6026833", "Abcd1234")
-            )
+        TaoPhongScr taoPhongScr = StepUtils.step("Mở màn hình Tạo phòng (Guest / Account / đã vào Tạo phòng)", () ->
+                new flows.CreateRoomEntryFlow(driver, auth).openTaoPhongWithOptionalLogin(
+                        trucTuyenScr, "uid", "6026833", "Abcd1234")
         );
 
-        String roomName = "ngoc lele bao " + System.currentTimeMillis();
+        String roomName = buildUniqueRoomName();
         CuaToiScr roomPage = StepUtils.step("Tạo phòng riêng tư",
             () -> taoPhongScr.createRoom(roomName, "PRIVATE", "1212")
         );

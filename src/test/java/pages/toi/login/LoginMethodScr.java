@@ -29,6 +29,26 @@ import java.util.Map;
  */
 public class LoginMethodScr extends BaseScr {
 
+    private static final String IOS_LOGIN_FACEBOOK = "Đăng nhập Facebook";
+    private static final String IOS_LOGIN_GOOGLE = "Đăng nhập bằng Google";
+    private static final String IOS_LOGIN_ZALO = "Đăng nhập Zalo";
+    private static final String IOS_LOGIN_APPLE = "Đăng nhập bằng Apple";
+    private static final String IOS_LOGIN_UID = "Đăng nhập bằng ID";
+    private static final String IOS_LOGIN_PHONE = "Đăng nhập số điện thoại";
+    // XPath tuyệt đối theo dump thực tế user cung cấp (ưu tiên dùng cho cụm Gần đây iOS hiện tại).
+    private static final String IOS_XP_ZALO_EXACT =
+            "//XCUIElementTypeWindow/XCUIElementTypeOther/XCUIElementTypeOther/XCUIElementTypeOther/"
+                    + "XCUIElementTypeOther[1]/XCUIElementTypeOther/XCUIElementTypeOther/XCUIElementTypeOther/"
+                    + "XCUIElementTypeOther[2]/XCUIElementTypeOther[2]/XCUIElementTypeOther[2]/XCUIElementTypeImage[5]";
+    private static final String IOS_XP_PHONE_EXACT =
+            "//XCUIElementTypeWindow/XCUIElementTypeOther/XCUIElementTypeOther/XCUIElementTypeOther/"
+                    + "XCUIElementTypeOther[1]/XCUIElementTypeOther/XCUIElementTypeOther/XCUIElementTypeOther/"
+                    + "XCUIElementTypeOther[2]/XCUIElementTypeOther[2]/XCUIElementTypeOther[2]/XCUIElementTypeImage[6]";
+    private static final String IOS_XP_UID_EXACT =
+            "//XCUIElementTypeWindow/XCUIElementTypeOther/XCUIElementTypeOther/XCUIElementTypeOther/"
+                    + "XCUIElementTypeOther[1]/XCUIElementTypeOther/XCUIElementTypeOther/XCUIElementTypeOther/"
+                    + "XCUIElementTypeOther[2]/XCUIElementTypeOther[2]/XCUIElementTypeOther[2]/XCUIElementTypeImage[7]";
+
     public LoginMethodScr(AppiumDriver driver) {
         super(driver);
     }
@@ -39,37 +59,33 @@ public class LoginMethodScr extends BaseScr {
     public static void waitForLoginMethodScreen(AppiumDriver driver) {
         WebDriverWait w = new WebDriverWait(driver, Duration.ofSeconds(25));
         w.until(d -> {
-            boolean isAcc = AccountScr.isAccountScr(driver, 0);
-            if (isAcc) {
+            AppiumDriver ad = (AppiumDriver) d;
+            if (AccountScr.isAccountScr(ad, 0)) {
                 return false;
             }
-            List<WebElement> fb = d.findElements(AppiumBy.accessibilityId("Đăng nhập Facebook"));
-            if (!fb.isEmpty()) {
-                System.out.println("[DEBUG] Found Facebook button");
-                return true;
-            }
-            List<WebElement> gg = d.findElements(AppiumBy.accessibilityId("Đăng nhập bằng Google"));
-            if (!gg.isEmpty()) {
-                System.out.println("[DEBUG] Found Google button");
-                return true;
-            }
-            List<WebElement> gd = d.findElements(AppiumBy.accessibilityId("Gần đây"));
-            if (!gd.isEmpty()) {
-                System.out.println("[DEBUG] Found 'Gan day' section");
-                return true;
-            }
-            List<WebElement> id = d.findElements(AppiumBy.accessibilityId("Đăng nhập bằng ID"));
-            if (!id.isEmpty()) {
-                System.out.println("[DEBUG] Found 'Login by ID' button");
-                return true;
-            }
-            List<WebElement> texts = d.findElements(AppiumBy.accessibilityId("Đăng nhập để tận hưởng trải nghiệm âm nhạc tốt hơn"));
-            if (!texts.isEmpty()) {
-                System.out.println("[DEBUG] Found 'Enjoy' text trigger");
-                return true;
-            }
-            return false;
+            return isLoginMethodScreenPresent(ad);
         });
+    }
+
+    /** Kiểm tra nhanh (không chờ) — đồng bộ điều kiện với {@link #waitForLoginMethodScreen}. */
+    public static boolean isLoginMethodScreenPresent(AppiumDriver driver) {
+        if (AccountScr.isAccountScr(driver, 0)) {
+            return false;
+        }
+        if (!driver.findElements(AppiumBy.accessibilityId(IOS_LOGIN_FACEBOOK)).isEmpty()) {
+            return true;
+        }
+        if (!driver.findElements(AppiumBy.accessibilityId(IOS_LOGIN_GOOGLE)).isEmpty()) {
+            return true;
+        }
+        if (!driver.findElements(AppiumBy.accessibilityId("Gần đây")).isEmpty()) {
+            return true;
+        }
+        if (!driver.findElements(AppiumBy.accessibilityId(IOS_LOGIN_UID)).isEmpty()) {
+            return true;
+        }
+        return !driver.findElements(
+                AppiumBy.accessibilityId("Đăng nhập để tận hưởng trải nghiệm âm nhạc tốt hơn")).isEmpty();
     }
 
     /**
@@ -124,13 +140,10 @@ public class LoginMethodScr extends BaseScr {
             @Override
             public List<WebElement> findElements(SearchContext context) {
                 String[] xpaths = {
-                        "//*[contains(@name,'Đăng nhập bằng ID') or contains(@label,'Đăng nhập bằng ID')]",
-                        "//XCUIElementTypeImage[contains(@name,'Đăng nhập bằng ID') or contains(@label,'Đăng nhập bằng ID')]",
-                        "//XCUIElementTypeStaticText[contains(@name,'Đăng nhập bằng ID') or contains(@label,'Đăng nhập bằng ID')]",
-                        "//XCUIElementTypeImage[(contains(@name,'Gần đây') or contains(@label,'Gần đây'))]"
-                                + "/following-sibling::XCUIElementTypeImage[2]",
-                        "//*[(contains(@name,'Gần đây') or contains(@label,'Gần đây'))]"
-                                + "/following-sibling::XCUIElementTypeImage[2]"
+                        IOS_XP_UID_EXACT,
+                        "//*[contains(@name,'" + IOS_LOGIN_UID + "') or contains(@label,'" + IOS_LOGIN_UID + "')]",
+                        "//XCUIElementTypeImage[contains(@name,'" + IOS_LOGIN_UID + "') or contains(@label,'" + IOS_LOGIN_UID + "')]",
+                        "//XCUIElementTypeStaticText[contains(@name,'" + IOS_LOGIN_UID + "') or contains(@label,'" + IOS_LOGIN_UID + "')]"
                 };
                 for (String xp : xpaths) {
                     List<WebElement> els = context.findElements(AppiumBy.xpath(xp));
@@ -140,7 +153,8 @@ public class LoginMethodScr extends BaseScr {
                 }
                 List<WebElement> pred = context.findElements(AppiumBy.iOSNsPredicateString(
                         "(type == 'XCUIElementTypeImage' OR type == 'XCUIElementTypeStaticText') "
-                                + "AND (name CONTAINS[c] 'Đăng nhập' AND name CONTAINS[c] 'ID')"));
+                                + "AND ((name CONTAINS[c] 'ID' OR label CONTAINS[c] 'ID') "
+                                + "OR (name CONTAINS[c] 'đăng nhập bằng id' OR label CONTAINS[c] 'đăng nhập bằng id'))"));
                 return pred.isEmpty() ? Collections.emptyList() : pred;
             }
 
@@ -156,15 +170,14 @@ public class LoginMethodScr extends BaseScr {
             @Override
             public List<WebElement> findElements(SearchContext context) {
                 String[] xpaths = {
-                        "//*[contains(@name,'Đăng nhập số điện thoại') or contains(@label,'Đăng nhập số điện thoại')]",
-                        "//XCUIElementTypeImage[contains(@name,'Đăng nhập số điện thoại') "
-                                + "or contains(@label,'Đăng nhập số điện thoại')]",
-                        "//XCUIElementTypeStaticText[contains(@name,'Đăng nhập số điện thoại') "
-                                + "or contains(@label,'Đăng nhập số điện thoại')]",
-                        "//XCUIElementTypeImage[(contains(@name,'Gần đây') or contains(@label,'Gần đây'))]"
-                                + "/following-sibling::XCUIElementTypeImage[1]",
-                        "//*[(contains(@name,'Gần đây') or contains(@label,'Gần đây'))]"
-                                + "/following-sibling::XCUIElementTypeImage[1]"
+                        IOS_XP_PHONE_EXACT,
+                        "//*[contains(@name,'" + IOS_LOGIN_PHONE + "') or contains(@label,'" + IOS_LOGIN_PHONE + "')]",
+                        "//XCUIElementTypeImage[contains(@name,'" + IOS_LOGIN_PHONE + "') "
+                                + "or contains(@label,'" + IOS_LOGIN_PHONE + "')]",
+                        "//XCUIElementTypeStaticText[contains(@name,'" + IOS_LOGIN_PHONE + "') "
+                                + "or contains(@label,'" + IOS_LOGIN_PHONE + "')]",
+                        iosRecentIconByOrder(1),
+                        iosRecentIconByOrder(2)
                 };
                 for (String xp : xpaths) {
                     List<WebElement> els = context.findElements(AppiumBy.xpath(xp));
@@ -190,7 +203,7 @@ public class LoginMethodScr extends BaseScr {
         return new By() {
             @Override
             public List<WebElement> findElements(SearchContext context) {
-                List<WebElement> byAcc = context.findElements(AppiumBy.accessibilityId("Đăng nhập bằng ID"));
+                List<WebElement> byAcc = context.findElements(AppiumBy.accessibilityId(IOS_LOGIN_UID));
                 if (!byAcc.isEmpty()) {
                     return byAcc;
                 }
@@ -208,6 +221,10 @@ public class LoginMethodScr extends BaseScr {
         return new By() {
             @Override
             public List<WebElement> findElements(SearchContext context) {
+                List<WebElement> byAcc = context.findElements(AppiumBy.accessibilityId(IOS_LOGIN_PHONE));
+                if (!byAcc.isEmpty()) {
+                    return byAcc;
+                }
                 return iosPhoneFallbackChain().findElements(context);
             }
 
@@ -218,14 +235,83 @@ public class LoginMethodScr extends BaseScr {
         };
     }
 
+    private static By iosGoogleCombined() {
+        return new By() {
+            @Override
+            public List<WebElement> findElements(SearchContext context) {
+                List<WebElement> byAcc = context.findElements(AppiumBy.accessibilityId(IOS_LOGIN_GOOGLE));
+                if (!byAcc.isEmpty()) {
+                    return byAcc;
+                }
+                String[] xpaths = {
+                        "//*[contains(@name,'" + IOS_LOGIN_GOOGLE + "') or contains(@label,'" + IOS_LOGIN_GOOGLE + "')]",
+                        iosRecentIconByOrder(1)
+                };
+                for (String xp : xpaths) {
+                    List<WebElement> els = context.findElements(AppiumBy.xpath(xp));
+                    if (!els.isEmpty()) {
+                        return els;
+                    }
+                }
+                return Collections.emptyList();
+            }
+
+            @Override
+            public String toString() {
+                return "LoginMethodScr.iosGoogleCombined";
+            }
+        };
+    }
+
+    private static By iosZaloCombined() {
+        return new By() {
+            @Override
+            public List<WebElement> findElements(SearchContext context) {
+                List<WebElement> byAcc = context.findElements(AppiumBy.accessibilityId(IOS_LOGIN_ZALO));
+                if (!byAcc.isEmpty()) {
+                    return byAcc;
+                }
+                String[] xpaths = {
+                        IOS_XP_ZALO_EXACT,
+                        "//*[contains(@name,'" + IOS_LOGIN_ZALO + "') or contains(@label,'" + IOS_LOGIN_ZALO + "')]",
+                        iosRecentIconByOrder(3)
+                };
+                for (String xp : xpaths) {
+                    List<WebElement> els = context.findElements(AppiumBy.xpath(xp));
+                    if (!els.isEmpty()) {
+                        return els;
+                    }
+                }
+                return Collections.emptyList();
+            }
+
+            @Override
+            public String toString() {
+                return "LoginMethodScr.iosZaloCombined";
+            }
+        };
+    }
+
+    /**
+     * iOS dump login-method: icon "Gần đây" là anchor và các method gần đây nằm ở sibling kế tiếp.
+     */
+    private static String iosRecentIconByOrder(int order) {
+        return "//XCUIElementTypeImage[(contains(@name,'Gần đây') or contains(@label,'Gần đây'))]"
+                + "/following-sibling::XCUIElementTypeImage[" + order + "]";
+    }
+
     private By locatorFor(String key) {
         return switch (key) {
-            case "facebook" -> AppiumBy.accessibilityId("Đăng nhập Facebook");
-            case "google" -> AppiumBy.accessibilityId("Đăng nhập bằng Google");
-            case "zalo" -> AppiumBy.accessibilityId("Đăng nhập Zalo");
-            case "apple" -> AppiumBy.accessibilityId("Đăng nhập bằng Apple");
+            case "facebook" -> AppiumBy.accessibilityId(IOS_LOGIN_FACEBOOK);
+            case "google" -> byPlatform(driver,
+                    AppiumBy.accessibilityId(IOS_LOGIN_GOOGLE),
+                    iosGoogleCombined());
+            case "zalo" -> byPlatform(driver,
+                    AppiumBy.accessibilityId(IOS_LOGIN_ZALO),
+                    iosZaloCombined());
+            case "apple" -> AppiumBy.accessibilityId(IOS_LOGIN_APPLE);
             case "uid" -> byPlatform(driver,
-                    AppiumBy.accessibilityId("Đăng nhập bằng ID"),
+                    AppiumBy.accessibilityId(IOS_LOGIN_UID),
                     iosUidCombined());
             case "phone" -> byPlatform(driver,
                     AppiumBy.accessibilityId("Đăng nhập số điện thoại\nGần đây"),

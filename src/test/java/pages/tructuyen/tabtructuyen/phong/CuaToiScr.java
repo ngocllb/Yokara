@@ -16,8 +16,8 @@ import io.appium.java_client.AppiumDriver;
  */
 public class CuaToiScr extends BaseScr {
 
-    /** Số ký tự tối đa dùng để tìm phòng (content-desc truncate tên dài) */
-    private static final int SEARCH_NAME_MAX_LEN = 18;
+    /** Số ký tự tối đa dùng để tìm phòng (iOS/Android có thể truncate tên dài trong card). */
+    private static final int SEARCH_NAME_MAX_LEN = 24;
 
     public CuaToiScr(AppiumDriver driver) {
         super(driver);
@@ -36,13 +36,40 @@ public class CuaToiScr extends BaseScr {
                 : roomName;
     }
 
+    private String escXPath(String raw) {
+        return raw == null ? "" : raw.replace("'", "''");
+    }
+
+    /** Key nhận diện ổn định đặt ở đầu tên phòng (vd: rabc123). */
+    private String roomKey(String roomName) {
+        if (roomName == null) {
+            return "";
+        }
+        String t = roomName.trim();
+        if (t.isEmpty()) {
+            return "";
+        }
+        int space = t.indexOf(' ');
+        return space > 0 ? t.substring(0, space) : t;
+    }
+
     /**
      * Build XPath locator tìm element có content-desc hoặc name chứa tên phòng (truncated).
      */
     private By roomLocator(String roomName) {
-        String searchName = safeSearchName(roomName);
+        String searchName = escXPath(safeSearchName(roomName));
+        String key = escXPath(roomKey(roomName));
         return AppiumBy.xpath(
-                "//*[contains(@content-desc, '" + searchName + "') or contains(@name, '" + searchName + "')]");
+                "//*[contains(@content-desc, '" + searchName + "') "
+                        + "or contains(@name, '" + searchName + "') "
+                        + "or contains(@label, '" + searchName + "') "
+                        + "or contains(@content-desc, '" + key + "') "
+                        + "or contains(@name, '" + key + "') "
+                        + "or contains(@label, '" + key + "') "
+                        + "or (self::XCUIElementTypeOther and contains(@name,'Talk') and contains(@name, '" + searchName + "')) "
+                        + "or (self::XCUIElementTypeOther and contains(@label,'Talk') and contains(@label, '" + searchName + "')) "
+                        + "or (self::XCUIElementTypeOther and contains(@name,'Talk') and contains(@name, '" + key + "')) "
+                        + "or (self::XCUIElementTypeOther and contains(@label,'Talk') and contains(@label, '" + key + "'))]");
     }
 
     // ─── Checks ───────────────────────────────────────────────────────────────
@@ -75,10 +102,20 @@ public class CuaToiScr extends BaseScr {
      * @return PhongScr – màn hình bên trong phòng
      */
     public PhongScr clickRoom(String roomName) {
-        String searchName = safeSearchName(roomName);
+        String searchName = escXPath(safeSearchName(roomName));
+        String key = escXPath(roomKey(roomName));
         // Target element chứa tên phòng - generic XPath to work on both platforms
         By clickableRoom = AppiumBy.xpath(
-                "//*[contains(@content-desc, '" + searchName + "') or contains(@name, '" + searchName + "')]");
+                "//*[contains(@content-desc, '" + searchName + "') "
+                        + "or contains(@name, '" + searchName + "') "
+                        + "or contains(@label, '" + searchName + "') "
+                        + "or contains(@content-desc, '" + key + "') "
+                        + "or contains(@name, '" + key + "') "
+                        + "or contains(@label, '" + key + "') "
+                        + "or (self::XCUIElementTypeOther and contains(@name,'Talk') and contains(@name, '" + searchName + "')) "
+                        + "or (self::XCUIElementTypeOther and contains(@label,'Talk') and contains(@label, '" + searchName + "')) "
+                        + "or (self::XCUIElementTypeOther and contains(@name,'Talk') and contains(@name, '" + key + "')) "
+                        + "or (self::XCUIElementTypeOther and contains(@label,'Talk') and contains(@label, '" + key + "'))]");
         click(clickableRoom);
         return new PhongScr(driver);
     }

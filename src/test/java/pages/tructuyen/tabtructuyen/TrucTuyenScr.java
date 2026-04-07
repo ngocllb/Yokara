@@ -1,11 +1,16 @@
 package pages.tructuyen.tabtructuyen;
 
 import org.openqa.selenium.By;
+import org.openqa.selenium.TimeoutException;
+import org.openqa.selenium.support.ui.WebDriverWait;
 
 import base.BaseScr;
 import io.appium.java_client.AppiumBy;
 import io.appium.java_client.AppiumDriver;
 import io.appium.java_client.ios.IOSDriver;
+
+import java.time.Duration;
+
 import pages.tructuyen.tabkhampha.KhamPhaScr;
 import pages.tructuyen.tabtructuyen.phong.CuaToiScr;
 import pages.tructuyen.tabtructuyen.phong.TaoPhongScr;
@@ -93,8 +98,68 @@ public class TrucTuyenScr extends BaseScr {
         return bottomNav;
     }
 
+    /** iOS: coi là có trong tree (WDA hay {@code visible=false} với icon/text vẫn tap được). */
+    private boolean isPresentInDom(By locator) {
+        try {
+            return !driver.findElements(locator).isEmpty();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private boolean trucTuyenMarkersOk(boolean usePresenceOnly) {
+        if (usePresenceOnly) {
+            boolean base = isPresentInDom(btnTaoPhong) || isPresentInDom(lblKhamPha) || isPresentInDom(tabDeCu)
+                    || isPresentInDom(lblTrucTuyen) || isPresentInDom(btnBangXepHang);
+            if (base) {
+                return true;
+            }
+            // iOS: Flutter/WDA đôi khi chậm cập nhật tree sau activate — thêm predicate/xpath lỏng
+            return iosLoosePresenceMarkers();
+        }
+        return isDisplayed(btnTaoPhong) || isDisplayed(lblKhamPha) || isDisplayed(tabDeCu)
+                || isDisplayed(lblTrucTuyen);
+    }
+
+    private boolean iosLoosePresenceMarkers() {
+        if (!(driver instanceof IOSDriver)) {
+            return false;
+        }
+        try {
+            if (!driver.findElements(AppiumBy.iOSNsPredicateString(
+                    "name CONTAINS 'Khám phá' OR name CONTAINS 'Tạo phòng' OR name CONTAINS 'Đề cử'"))
+                    .isEmpty()) {
+                return true;
+            }
+        } catch (Exception ignored) {
+        }
+        return !driver.findElements(AppiumBy.xpath(
+                "//*[contains(@name,'Khám phá') or contains(@name,'Tạo phòng') or contains(@name,'Đề cử')]"))
+                .isEmpty();
+    }
+
+    /**
+     * Chờ màn Trực tuyến (nội dung hoặc marker lỏng trên iOS) — dùng chung cho {@link #isLoaded()} và {@link base.BottomNav}.
+     */
+    public boolean waitForScreenReady(Duration timeout) {
+        boolean ios = driver instanceof IOSDriver;
+        try {
+            WebDriverWait w = new WebDriverWait(driver, timeout);
+            w.until(d -> trucTuyenMarkersOk(ios));
+            return true;
+        } catch (TimeoutException e) {
+            return false;
+        }
+    }
+
+    /**
+     * Không chỉ dựa label tab bar "Trực tuyến" — trên iOS icon tab đôi khi {@code isDisplayed() == false}.
+     */
     public boolean isLoaded() {
-        return isDisplayed(lblTrucTuyen);
+        Duration d = driver instanceof IOSDriver
+                ? Duration.ofSeconds(28)
+                : Duration.ofSeconds(18);
+        return waitForScreenReady(d);
     }
 
     public void clickSearch() {
@@ -137,19 +202,13 @@ public class TrucTuyenScr extends BaseScr {
         return new KhamPhaScr(driver);
     }
 
-    public TaoPhongScr clickTaoPhong() {
+    /** Chỉ tap nút Tạo phòng — luồng đăng nhập tùy chọn dùng {@link flows.CreateRoomEntryFlow}. */
+    public void tapCreateRoomButton() {
         click(btnTaoPhong);
-        return new TaoPhongScr(driver);
     }
-    
-    public TaoPhongScr clickTaoPhong(java.util.function.Consumer<pages.toi.ToiGuestScr> guestHandler) {
-        click(btnTaoPhong);
-        pages.toi.ToiGuestScr guestPage = new pages.toi.ToiGuestScr(driver);
-        if (guestPage.isGuestPageDisplayed() && guestHandler != null) {
-            guestHandler.accept(guestPage);
-            // Sau khi handler kết thúc (tức là đã đăng nhập xong), mình bấm lại Tạo Phòng
-            click(btnTaoPhong);
-        }
+
+    public TaoPhongScr clickTaoPhong() {
+        tapCreateRoomButton();
         return new TaoPhongScr(driver);
     }
 

@@ -62,6 +62,23 @@ public class AuthFlow {
         return performLoginAction(method, methodPage, args);
     }
 
+    /**
+     * Đã ở màn chọn tài khoản đã lưu (vd. sau Tạo phòng khi app có session lưu).
+     */
+    public ToiProfileScr loginFromAccountScreen(AccountScr accountPage, String method, String... args) {
+        accountPage.selectAnotherMethodLogin();
+        LoginMethodScr.waitForLoginMethodScreen(driver);
+        return performLoginAction(method, new LoginMethodScr(driver), args);
+    }
+
+    /**
+     * Màn chọn phương thức đăng nhập đã hiển thị (không cần bấm thêm từ Guest/Account).
+     */
+    public ToiProfileScr loginWhenLoginMethodScreenVisible(String method, String... args) {
+        LoginMethodScr.waitForLoginMethodScreen(driver);
+        return performLoginAction(method, new LoginMethodScr(driver), args);
+    }
+
     private void ensureToiTabVisible() {
         try {
             // Sử dụng BottomNav để có logic fallback và wait ổn định cho iOS
