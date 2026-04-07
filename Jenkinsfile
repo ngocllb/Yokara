@@ -11,6 +11,11 @@ pipeline {
         skipDefaultCheckout(true)
     }
 
+    environment {
+        // Ensure Jenkins can find 'idevice_id', 'tidevice', and 'adb' in common mac paths
+        PATH = "/opt/homebrew/bin:/usr/local/bin:${env.HOME}/Library/Android/sdk/platform-tools:${env.PATH}"
+    }
+
     stages {
         stage('Checkout') {
             steps {
