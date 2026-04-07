@@ -40,7 +40,7 @@ public class TaoPhongScr extends BaseScr {
 
     public CuaToiScr createRoom(String roomName, String privateStatus, String password) {
         // 1. Nhập tên phòng
-        click(txtTenPhong);
+        select(txtTenPhong);
         By lblSuaTen = AppiumBy.accessibilityId("Sửa tên");
         if (isDisplayed(lblSuaTen)) {
             By txtEditName = byPlatform(driver, 

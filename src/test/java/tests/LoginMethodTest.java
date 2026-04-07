@@ -21,6 +21,22 @@ public class LoginMethodTest extends BaseDriver {
 
     private final LoginTestData data = LoginTestData.load();
 
+    @org.testng.annotations.BeforeMethod(alwaysRun = true)
+    public void ensureGuestState() {
+        if (driver != null) {
+            try {
+                BottomNav bottomNav = new BottomNav(driver);
+                bottomNav.goToToi();
+                ToiGuestScr guestPage = new ToiGuestScr(driver);
+                if (!guestPage.isGuest()) {
+                    logoutAndVerify(new ToiProfileScr(driver));
+                }
+            } catch (Exception e) {
+                System.out.println("[LoginMethodTest] Không thể đảm bảo trạng thái Guest: " + e.getMessage());
+            }
+        }
+    }
+
     @Test(priority = 1)
     public void loginByUIDTest() {
 

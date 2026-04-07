@@ -44,28 +44,28 @@ public class LoginMethodScr extends BaseScr {
                 return false;
             }
             List<WebElement> fb = d.findElements(AppiumBy.accessibilityId("Đăng nhập Facebook"));
-            if (!fb.isEmpty() && fb.get(0).isDisplayed()) {
-                System.out.println("[DEBUG] Found Facebook button (Visible)");
+            if (!fb.isEmpty()) {
+                System.out.println("[DEBUG] Found Facebook button");
                 return true;
             }
             List<WebElement> gg = d.findElements(AppiumBy.accessibilityId("Đăng nhập bằng Google"));
-            if (!gg.isEmpty() && gg.get(0).isDisplayed()) {
-                System.out.println("[DEBUG] Found Google button (Visible)");
+            if (!gg.isEmpty()) {
+                System.out.println("[DEBUG] Found Google button");
                 return true;
             }
             List<WebElement> gd = d.findElements(AppiumBy.accessibilityId("Gần đây"));
-            if (!gd.isEmpty() && gd.get(0).isDisplayed()) {
-                System.out.println("[DEBUG] Found 'Gan day' section (Visible)");
+            if (!gd.isEmpty()) {
+                System.out.println("[DEBUG] Found 'Gan day' section");
                 return true;
             }
             List<WebElement> id = d.findElements(AppiumBy.accessibilityId("Đăng nhập bằng ID"));
-            if (!id.isEmpty() && id.get(0).isDisplayed()) {
-                System.out.println("[DEBUG] Found 'Login by ID' button (Visible)");
+            if (!id.isEmpty()) {
+                System.out.println("[DEBUG] Found 'Login by ID' button");
                 return true;
             }
             List<WebElement> texts = d.findElements(AppiumBy.accessibilityId("Đăng nhập để tận hưởng trải nghiệm âm nhạc tốt hơn"));
-            if (!texts.isEmpty() && texts.get(0).isDisplayed()) {
-                System.out.println("[DEBUG] Found 'Enjoy' text trigger (Visible)");
+            if (!texts.isEmpty()) {
+                System.out.println("[DEBUG] Found 'Enjoy' text trigger");
                 return true;
             }
             return false;
