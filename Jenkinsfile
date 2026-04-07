@@ -1,5 +1,5 @@
 pipeline {
-    agent any
+    agent none
 
     triggers {
         // Run automatically at 7:00 AM every day
@@ -9,6 +9,8 @@ pipeline {
     options {
         // Skip default checkout to apply custom shallow clone logic
         skipDefaultCheckout(true)
+        // Tránh 2 build cùng job đè workspace/resources của nhau
+        disableConcurrentBuilds()
     }
 
     environment {
@@ -18,6 +20,7 @@ pipeline {
 
     stages {
         stage('Checkout') {
+            agent any
             steps {
                 // Fetch only the latest commit from 'main' (shallow clone)
                 checkout scmGit(
@@ -31,6 +34,7 @@ pipeline {
         }
 
         stage('Detect Devices & Run Parallel Tests') {
+            agent any
             steps {
                 script {
                     echo "Checking for physically connected devices..."
@@ -56,37 +60,39 @@ pipeline {
                         def platform = parts[0]
                         def udid = parts[1]
                         def shortUdid = udid.size() > 8 ? udid.substring(udid.size() - 8) : udid
-                        def branchWs = "${env.WORKSPACE}/.jenkins-ws/${platform}-${shortUdid}"
+                        def branchWs = ".jenkins-ws/${env.BUILD_TAG}/${platform}-${shortUdid}"
                         def mergeDir = "${env.WORKSPACE}/allure-merge/${platform}-${shortUdid}"
                         
                         parallelStages["Test ${platform.toUpperCase()}-${shortUdid}"] = {
-                            stage("Run on ${udid}") {
-                                ws(branchWs) {
-                                    deleteDir()
-                                    unstash 'repo-source'
-                                    try {
-                                        // Make sure results folder is clean in isolated workspace
-                                        sh "rm -rf target/allure-results-${udid}"
+                            node(env.NODE_NAME) {
+                                stage("Run on ${udid}") {
+                                    ws(branchWs) {
+                                        deleteDir()
+                                        unstash 'repo-source'
+                                        try {
+                                            // Make sure results folder is clean in isolated workspace
+                                            sh "rm -rf target/allure-results-${udid}"
 
-                                        // Execute Maven test bound to this specific device
-                                        sh """
-                                            mvn clean test -DsuiteXmlFile=\"testng-jenkins.xml\" \
-                                            -Dplatform=${platform} \
-                                            -D${platform}.udid=\"${udid}\" \
-                                            -Dallure.results.directory=target/allure-results-${udid}
-                                        """
-                                    } finally {
-                                        // Create environment.properties for Allure to distinguish the devices in the final report
-                                        sh """
-                                            mkdir -p target/allure-results-${udid}
-                                            echo "Platform=${platform}" > target/allure-results-${udid}/environment.properties
-                                            echo "DeviceUDID=${udid}" >> target/allure-results-${udid}/environment.properties
+                                            // Execute Maven test bound to this specific device
+                                            sh """
+                                                mvn clean test -DsuiteXmlFile=\"testng-jenkins.xml\" \
+                                                -Dplatform=${platform} \
+                                                -D${platform}.udid=\"${udid}\" \
+                                                -Dallure.results.directory=target/allure-results-${udid}
+                                            """
+                                        } finally {
+                                            // Create environment.properties for Allure to distinguish the devices in the final report
+                                            sh """
+                                                mkdir -p target/allure-results-${udid}
+                                                echo "Platform=${platform}" > target/allure-results-${udid}/environment.properties
+                                                echo "DeviceUDID=${udid}" >> target/allure-results-${udid}/environment.properties
 
-                                            mkdir -p "${mergeDir}"
-                                            if [ -d "target/allure-results-${udid}" ]; then
-                                              cp -R "target/allure-results-${udid}/." "${mergeDir}/" || true
-                                            fi
-                                        """
+                                                mkdir -p "${mergeDir}"
+                                                if [ -d "target/allure-results-${udid}" ]; then
+                                                  cp -R "target/allure-results-${udid}/." "${mergeDir}/" || true
+                                                fi
+                                            """
+                                        }
                                     }
                                 }
                             }
