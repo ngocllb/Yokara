@@ -5,7 +5,7 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                checkout scm
+                git branch: 'main', url: 'https://github.com/ngocllb/Yokara'
                 stash name: 'source', includes: '**/*'
             }
         }
@@ -13,7 +13,6 @@ pipeline {
         stage('Run Parallel Tests') {
             steps {
                 script {
-
                     def devices = sh(
                         script: "/opt/homebrew/bin/python3 scripts/get_jenkins_devices.py",
                         returnStdout: true
@@ -23,30 +22,22 @@ pipeline {
 
                     devices.each { line ->
                         def (platform, udid) = line.split("\\|")
-
                         def shortUdid = udid.takeRight(8)
 
                         branches["${platform}-${shortUdid}"] = {
-
                             node {
-
                                 deleteDir()
                                 unstash 'source'
 
                                 def allureDir = "target/allure-results-${udid}"
-
-                                sh """
-                                    mkdir -p ${allureDir}
-                                """
-
                                 def appiumPort = platform == 'android' ? '4723' : '4724'
+                                def extraArgs = platform == 'android'
+                                        ? "-Dandroid.udid=${udid} -Dandroid.systemPort.base=8300"
+                                        : "-Dios.udid=${udid} -Dios.wdaLocalPort.base=8200 -Dios.mjpegServerPort.base=10200"
 
-                                def extraArgs = platform == 'android' ?
-                                        "-Dandroid.udid=${udid} -Dandroid.systemPort.base=8300" :
-                                        "-Dios.udid=${udid} -Dios.wdaLocalPort.base=8200 -Dios.mjpegServerPort.base=10200"
+                                sh "mkdir -p ${allureDir}"
 
                                 try {
-
                                     sh """
                                         mvn clean test \
                                         -DsuiteXmlFile=testng-jenkins.xml \
@@ -55,15 +46,11 @@ pipeline {
                                         ${extraArgs} \
                                         -Dallure.results.directory=${allureDir}
                                     """
-
                                 } finally {
-
-                                    // 🔥 QUAN TRỌNG: merge phẳng (flatten)
                                     sh """
                                         mkdir -p ${WORKSPACE}/allure-merge
                                         cp -R ${allureDir}/* ${WORKSPACE}/allure-merge/ || true
                                     """
-
                                     archiveArtifacts artifacts: "${allureDir}/**", allowEmptyArchive: true
                                 }
                             }
