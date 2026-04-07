@@ -7,41 +7,26 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import pages.toi.ToiProfileScr;
 
-/**
- * Màn nhập OTP sau khi nhập SĐT.
- * <p>Android (logic cũ): {@code View} có {@code content-desc} chứa {@code Nhập mã OTP}, {@code EditText} bên trong.</p>
- * <p>iOS: {@code scripts/xml_dumps/otp-ios.xml} — khối title động (timer); ô OTP là {@code TextField} không label trong dump; nút dùng semantics cố định.</p>
- * <p>{@code otpTitle}/{@code otpInput} giữ {@code byPlatform}: cùng chuỗi con {@code Nhập mã OTP} nhưng cây Android vs iOS khác (View+EditText vs Other+TextField) — XPath tách an toàn hơn một {@code accessibilityId} duy nhất.</p>
- */
 public class OtpVerificationScr extends BaseScr {
 
-    private final By otpTitle;
-    private final By otpInput;
+    private final By otpTitle = AppiumBy.xpath(
+            "//android.view.View[contains(@content-desc,'Nhập mã OTP')]"
+    );
+
+    private final By otpInput = AppiumBy.xpath(
+            "//android.view.View[contains(@content-desc,'Nhập mã OTP')]//android.widget.EditText"
+    );
 
     private final By btnConfirm = AppiumBy.accessibilityId("Xác nhận");
+
     private final By btnResendCode = AppiumBy.accessibilityId("Gửi lại mã");
 
-    private final By otpErrorMessage;
+    private final By otpErrorMessage = AppiumBy.xpath(
+            "//*[contains(@content-desc,'Mã kích hoạt không đúng. Vui lòng kiểm tra lại')]"
+    );
 
     public OtpVerificationScr(AppiumDriver driver) {
         super(driver);
-        this.otpTitle = byPlatform(
-                driver,
-                AppiumBy.xpath("//android.view.View[contains(@content-desc,'Nhập mã OTP')]"),
-                AppiumBy.xpath("//XCUIElementTypeOther[contains(@name,'Nhập mã OTP')]"));
-        this.otpInput = byPlatform(
-                driver,
-                AppiumBy.xpath(
-                        "//android.view.View[contains(@content-desc,'Nhập mã OTP')]//android.widget.EditText"),
-                AppiumBy.xpath(
-                        "//XCUIElementTypeOther[contains(@name,'Nhập mã OTP')]/following::XCUIElementTypeTextField[1]"));
-        this.otpErrorMessage = byPlatform(
-                driver,
-                AppiumBy.xpath(
-                        "//*[contains(@content-desc,'Mã kích hoạt không đúng. Vui lòng kiểm tra lại')]"),
-                AppiumBy.xpath(
-                        "//*[contains(@name,'Mã kích hoạt không đúng') or contains(@label,'Mã kích hoạt không đúng') "
-                                + "or contains(@value,'Mã kích hoạt không đúng')]"));
     }
 
     public OtpVerificationScr waitForPageDisplayed() {

@@ -8,7 +8,6 @@ import io.appium.java_client.AppiumBy;
 import io.appium.java_client.AppiumDriver;
 import io.appium.java_client.InteractsWithApps;
 import io.appium.java_client.ios.IOSDriver;
-import io.qameta.allure.Allure;
 import org.openqa.selenium.By;
 import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.support.ui.WebDriverWait;
@@ -36,21 +35,25 @@ public class BaseDriver {
                       @Optional String suiteUdid,
                       @Optional String suiteDeviceLabel,
                       @Optional String suiteDeviceFolder) {
+
         String runPlatform = normalizePlatform(System.getProperty("platform"));
         String runAndroidUdid = normalizeRaw(System.getProperty("android.udid"));
         String runIosUdid = normalizeRaw(System.getProperty("ios.udid"));
 
         String requestedPlatform = normalizePlatform(suitePlatform);
         String requestedUdid = normalizeRaw(suiteUdid);
+
         if (requestedPlatform == null) {
             requestedPlatform = runPlatform;
         }
+
         if (runPlatform != null && requestedPlatform != null && !runPlatform.equals(requestedPlatform)) {
             throw new SkipException(String.format(
                     "[Skip] Invocation platform=%s không thuộc branch hiện tại platform=%s",
                     requestedPlatform, runPlatform
             ));
         }
+
         if (requestedUdid == null) {
             if ("android".equals(requestedPlatform)) {
                 requestedUdid = runAndroidUdid;
@@ -62,6 +65,7 @@ public class BaseDriver {
         if (requestedPlatform == null) {
             throw new SkipException("[Skip] Không xác định được platform cho test invocation hiện tại.");
         }
+
         if ("android".equals(requestedPlatform)) {
             List<String> online = DeviceManager.getAndroidPhysicalDevices();
             if (online.isEmpty()) {
@@ -80,18 +84,6 @@ public class BaseDriver {
             }
         } else {
             throw new SkipException("[Skip] Platform không hợp lệ: " + requestedPlatform);
-        }
-
-        if (suiteDeviceFolder != null && !suiteDeviceFolder.isBlank()) {
-            Allure.label("device", suiteDeviceFolder.trim());
-        }
-        if (suiteDeviceLabel != null && !suiteDeviceLabel.isBlank()) {
-            Allure.parameter("Thiết bị", suiteDeviceLabel.trim());
-        }
-
-        Allure.parameter("Run Platform", requestedPlatform);
-        if (requestedUdid != null) {
-            Allure.parameter("Run UDID", requestedUdid);
         }
 
         try {
@@ -158,9 +150,11 @@ public class BaseDriver {
         if (!(driver instanceof IOSDriver)) {
             return;
         }
+
         By trangChu = AppiumBy.accessibilityId("Trang chủ");
         By toi = AppiumBy.accessibilityId("Tôi");
         WebDriverWait tabWait = new WebDriverWait(driver, Duration.ofSeconds(22));
+
         try {
             tabWait.until(d -> !d.findElements(trangChu).isEmpty() || !d.findElements(toi).isEmpty());
             waitIosTabBarSettled();
@@ -168,13 +162,16 @@ public class BaseDriver {
         } catch (TimeoutException e) {
             System.out.println("[BaseDriver] iOS: chưa thấy thanh tab sau activateApp — thử terminate + activate");
         }
+
         try {
             String bid = ConfigManager.getRequired("ios.bundleId");
             InteractsWithApps app = (InteractsWithApps) driver;
             app.terminateApp(bid);
             app.activateApp(bid);
+
             new BaseScr(driver).handleStartupPopups();
             handleIosLaunchBannerIfPresent();
+
             WebDriverWait afterRelaunch = new WebDriverWait(driver, Duration.ofSeconds(35));
             afterRelaunch.until(d -> !d.findElements(trangChu).isEmpty() || !d.findElements(toi).isEmpty());
             waitIosTabBarSettled();
@@ -188,12 +185,15 @@ public class BaseDriver {
         if (!(driver instanceof IOSDriver)) {
             return;
         }
+
         By btnBoQua = AppiumBy.accessibilityId("Bỏ qua");
+
         try {
             List<org.openqa.selenium.WebElement> skips = driver.findElements(btnBoQua);
             if (skips.isEmpty()) {
                 return;
             }
+
             org.openqa.selenium.WebElement skip = skips.get(0);
             try {
                 skip.click();
@@ -203,7 +203,9 @@ public class BaseDriver {
                         java.util.Map.of("elementId", ((org.openqa.selenium.remote.RemoteWebElement) skip).getId())
                 );
             }
+
             System.out.println("[BaseDriver] iOS: đã dismiss banner bằng nút 'Bỏ qua'");
+
             new WebDriverWait(driver, Duration.ofSeconds(8)).until(d ->
                     d.findElements(btnBoQua).isEmpty()
                             || !d.findElements(AppiumBy.accessibilityId("Bài hát")).isEmpty()
