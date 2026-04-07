@@ -12,7 +12,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Factory khởi tạo AppiumDriver cho Android hoặc iOS.
@@ -20,11 +19,6 @@ import java.util.concurrent.atomic.AtomicInteger;
  * và tự động phát hiện (platform=auto).
  */
 public class DriverFactory {
-
-    /** Mỗi session Android tăng systemPort — tránh trùng khi song song nhiều máy/session. */
-    private static final AtomicInteger ANDROID_SESSION_SLOT = new AtomicInteger(0);
-    /** Mỗi session iOS tăng wdaLocalPort / mjpegServerPort. */
-    private static final AtomicInteger IOS_SESSION_SLOT = new AtomicInteger(0);
 
     public static AppiumDriver createDriver() {
         return createDriver(null, null);
@@ -35,7 +29,11 @@ public class DriverFactory {
      */
     public static AppiumDriver createDriver(String platformParam, String udidParam) {
         try {
-            String server = ConfigManager.getRequired("appiumServer");
+            String server = firstNonBlank(
+                    System.getProperty("appiumServer"),
+                    ConfigManager.get("appiumServer"),
+                    ConfigManager.getRequired("appiumServer")
+            );
             String platform = (platformParam != null && !platformParam.isBlank())
                     ? platformParam.trim().toLowerCase()
                     : resolvePlatform();
@@ -63,8 +61,11 @@ public class DriverFactory {
     // ================================================================
 
     private static AppiumDriver createAndroidDriver(String server, String udidParam) throws Exception {
-        // Ưu tiên: Parameter -> Config -> Auto detect
-        String udid = (udidParam != null && !udidParam.isBlank()) ? udidParam : ConfigManager.get("android.udid");
+        String udid = firstNonBlank(
+                udidParam,
+                System.getProperty("android.udid"),
+                ConfigManager.get("android.udid")
+        );
         if (udid == null || udid.isBlank()) {
             udid = DeviceManager.getAndroidUDID();
         } else {
@@ -93,9 +94,9 @@ public class DriverFactory {
         options.setDisableWindowAnimation(true);
         options.setSkipDeviceInitialization(true);
 
-        int systemPort = nextAndroidSystemPort();
+        int systemPort = resolveAndroidSystemPort(udid);
         options.setSystemPort(systemPort);
-        System.out.println("[DriverFactory] Android systemPort=" + systemPort + " (tránh conflict session song song)");
+        System.out.println("[DriverFactory] Android systemPort=" + systemPort + " (tự cấp, tránh conflict)");
 
         return new AndroidDriver(new URL(server), options);
     }
@@ -106,13 +107,15 @@ public class DriverFactory {
 
     private static AppiumDriver createIOSDriver(String server, String udidParam) throws Exception {
         XcodeProbe.logSummaryIfEnabled();
-        // Ưu tiên: Parameter -> Config -> Auto detect
-        String udid = (udidParam != null && !udidParam.isBlank()) ? udidParam : ConfigManager.get("ios.udid");
+        String udid = firstNonBlank(
+                udidParam,
+                System.getProperty("ios.udid"),
+                ConfigManager.get("ios.udid")
+        );
         if (udid == null || udid.isBlank()) {
             String detected = DeviceManager.resolveIosUdid(false);
             if (detected == null) {
-                throw new RuntimeException("[DriverFactory] Không tìm thấy thiết bị iOS (USB/Simulator). "
-                        + "Cài Xcode, bật Simulator hoặc kết nối iPhone; có thể chỉ định ios.udid / ios.target=simulator.");
+                throw new RuntimeException("[DriverFactory] Không tìm thấy thiết bị iOS (USB/Simulator).");
             }
             udid = detected;
         } else {
@@ -184,12 +187,12 @@ public class DriverFactory {
             options.setUpdatedWdaBundleId(wdaBundle);
         }
 
-        int wdaPort = nextIosWdaPort();
-        int mjpegPort = wdaPort + 2000;
+        int wdaPort = resolveIosWdaLocalPort(udid);
+        int mjpegPort = resolveIosMjpegServerPort(udid);
         options.setWdaLocalPort(wdaPort);
         options.setMjpegServerPort(mjpegPort);
         System.out.println("[DriverFactory] iOS wdaLocalPort=" + wdaPort + " mjpegServerPort=" + mjpegPort
-                + " (tránh conflict WDA song song)");
+                + " (tự cấp, tránh conflict)");
 
         return new IOSDriver(new URL(server), options);
     }
@@ -205,7 +208,10 @@ public class DriverFactory {
      * - "auto" hoặc không cấu hình → tự động phát hiện qua DeviceManager
      */
     private static String resolvePlatform() {
-        String platform = ConfigManager.get("platform");
+        String platform = firstNonBlank(
+                System.getProperty("platform"),
+                ConfigManager.get("platform")
+        );
 
         if (platform == null || platform.isBlank() || "auto".equalsIgnoreCase(platform)) {
             System.out.println("[DriverFactory] platform=auto → Đang tự động phát hiện thiết bị...");
@@ -219,8 +225,7 @@ public class DriverFactory {
         if (udid == null) {
             return false;
         }
-        return udid.matches(
-                "[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}");
+        return udid.matches("[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}");
     }
 
     private static boolean parseBool(String v, boolean def) {
@@ -251,16 +256,62 @@ public class DriverFactory {
         return path;
     }
 
-    private static int nextAndroidSystemPort() {
-        int base = parseInt(ConfigManager.get("android.systemPort.base"), 8300);
-        int slot = ANDROID_SESSION_SLOT.incrementAndGet();
-        return base + slot;
+    private static int resolveAndroidSystemPort(String udid) {
+        String raw = firstNonBlank(
+                System.getProperty("android.systemPort"),
+                ConfigManager.get("android.systemPort")
+        );
+        if (raw != null) {
+            return parseInt(raw, 8200);
+        }
+
+        int base = parseInt(firstNonBlank(
+                System.getProperty("android.systemPort.base"),
+                ConfigManager.get("android.systemPort.base")
+        ), 8200);
+
+        return base + stablePortOffset(udid, 500);
     }
 
-    private static int nextIosWdaPort() {
-        int base = parseInt(ConfigManager.get("ios.wdaLocalPort.base"), 8100);
-        int slot = IOS_SESSION_SLOT.incrementAndGet();
-        return base + slot * 10;
+    private static int resolveIosWdaLocalPort(String udid) {
+        String raw = firstNonBlank(
+                System.getProperty("ios.wdaLocalPort"),
+                ConfigManager.get("ios.wdaLocalPort")
+        );
+        if (raw != null) {
+            return parseInt(raw, 9100);
+        }
+
+        int base = parseInt(firstNonBlank(
+                System.getProperty("ios.wdaLocalPort.base"),
+                ConfigManager.get("ios.wdaLocalPort.base")
+        ), 9100);
+
+        return base + stablePortOffset(udid, 500);
+    }
+
+    private static int resolveIosMjpegServerPort(String udid) {
+        String raw = firstNonBlank(
+                System.getProperty("ios.mjpegServerPort"),
+                ConfigManager.get("ios.mjpegServerPort")
+        );
+        if (raw != null) {
+            return parseInt(raw, 10100);
+        }
+
+        int base = parseInt(firstNonBlank(
+                System.getProperty("ios.mjpegServerPort.base"),
+                ConfigManager.get("ios.mjpegServerPort.base")
+        ), 10100);
+
+        return base + stablePortOffset(udid, 500);
+    }
+
+    private static int stablePortOffset(String key, int modulo) {
+        if (key == null || key.isBlank()) {
+            return 0;
+        }
+        return Math.abs(key.hashCode()) % modulo;
     }
 
     private static int parseInt(String raw, int defaultValue) {
@@ -272,5 +323,17 @@ public class DriverFactory {
         } catch (NumberFormatException e) {
             return defaultValue;
         }
+    }
+
+    private static String firstNonBlank(String... values) {
+        if (values == null) {
+            return null;
+        }
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value.trim();
+            }
+        }
+        return null;
     }
 }
