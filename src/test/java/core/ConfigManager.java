@@ -9,15 +9,9 @@ import java.util.Properties;
 /**
  * Cấu hình automation: file {@code config/config.properties} được ghi đè bởi
  * {@link System#getProperty(String)} và biến môi trường (phục vụ Jenkins/CI).
- * <p>
- * Thứ tự ưu tiên: system property → biến môi trường → file.
- * <p>
- * Biến môi trường hỗ trợ:
- * <ul>
- *   <li>{@code YOKARA_&lt;KEY&gt;} với KEY = key trong file, ký tự {@code .} → {@code _}
- *       (vd: {@code YOKARA_ANDROID_APP_PACKAGE} cho {@code android.appPackage})</li>
- *   <li>Một số alias phổ biến: {@code APPIUM_SERVER}, {@code ANDROID_UDID}, {@code PLATFORM}, …</li>
- * </ul>
+ *
+ * Thứ tự ưu tiên:
+ * system property → biến môi trường → file config.
  */
 public final class ConfigManager {
 
@@ -31,18 +25,26 @@ public final class ConfigManager {
     static {
         ENV_ALIAS_TO_KEY.put("APPIUM_SERVER", "appiumServer");
         ENV_ALIAS_TO_KEY.put("PLATFORM", "platform");
+
+        // Android
         ENV_ALIAS_TO_KEY.put("ANDROID_UDID", "android.udid");
         ENV_ALIAS_TO_KEY.put("ANDROID_DEVICE_NAME", "android.deviceName");
         ENV_ALIAS_TO_KEY.put("ANDROID_APP_PACKAGE", "android.appPackage");
         ENV_ALIAS_TO_KEY.put("ANDROID_APP_ACTIVITY", "android.appActivity");
         ENV_ALIAS_TO_KEY.put("ANDROID_REAL_DEVICE_ONLY", "android.realDeviceOnly");
         ENV_ALIAS_TO_KEY.put("ANDROID_SYSTEM_PORT_BASE", "android.systemPort.base");
-        ENV_ALIAS_TO_KEY.put("IOS_WDA_LOCAL_PORT_BASE", "ios.wdaLocalPort.base");
+
+        // iOS
+        ENV_ALIAS_TO_KEY.put("IOS_UDID", "ios.udid");
         ENV_ALIAS_TO_KEY.put("IOS_BUNDLE_ID", "ios.bundleId");
         ENV_ALIAS_TO_KEY.put("IOS_TARGET", "ios.target");
         ENV_ALIAS_TO_KEY.put("IOS_TRY_SIMULATOR_FIRST", "ios.trySimulatorFirst");
         ENV_ALIAS_TO_KEY.put("IOS_SIMULATOR_DEVICE_NAME", "ios.simulatorDeviceName");
         ENV_ALIAS_TO_KEY.put("IOS_XCODE_ORG_ID", "ios.xcodeOrgId");
+        ENV_ALIAS_TO_KEY.put("IOS_XCODE_SIGNING_ID", "ios.xcodeSigningId");
+        ENV_ALIAS_TO_KEY.put("IOS_WDA_LOCAL_PORT_BASE", "ios.wdaLocalPort.base");
+        ENV_ALIAS_TO_KEY.put("IOS_MJPEG_SERVER_PORT_BASE", "ios.mjpegServerPort.base");
+        ENV_ALIAS_TO_KEY.put("IOS_DERIVED_DATA_PATH", "ios.derivedDataPath");
         ENV_ALIAS_TO_KEY.put("IOS_WDA_BUNDLE_ID", "ios.wda.bundleId");
         ENV_ALIAS_TO_KEY.put("IOS_NO_RESET", "ios.noReset");
         ENV_ALIAS_TO_KEY.put("IOS_APP", "ios.app");
@@ -76,6 +78,7 @@ public final class ConfigManager {
         if (prefixed != null && !prefixed.isBlank()) {
             return prefixed.trim();
         }
+
         for (Map.Entry<String, String> e : ENV_ALIAS_TO_KEY.entrySet()) {
             if (e.getValue().equals(key)) {
                 String v = System.getenv(e.getKey());
@@ -100,6 +103,31 @@ public final class ConfigManager {
 
         String fromFile = PROPERTIES.getProperty(key);
         return fromFile == null ? null : fromFile.trim();
+    }
+
+    public static String get(String key, String defaultValue) {
+        String value = get(key);
+        return (value == null || value.isBlank()) ? defaultValue : value;
+    }
+
+    public static int getInt(String key, int defaultValue) {
+        String value = get(key);
+        if (value == null || value.isBlank()) {
+            return defaultValue;
+        }
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid integer config for key: " + key + ", value: " + value);
+        }
+    }
+
+    public static boolean getBoolean(String key, boolean defaultValue) {
+        String value = get(key);
+        if (value == null || value.isBlank()) {
+            return defaultValue;
+        }
+        return Boolean.parseBoolean(value.trim());
     }
 
     public static String getRequired(String key) {
