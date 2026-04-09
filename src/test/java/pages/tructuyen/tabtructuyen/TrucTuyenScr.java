@@ -13,6 +13,7 @@ import java.time.Duration;
 
 import pages.tructuyen.tabkhampha.KhamPhaScr;
 import pages.tructuyen.tabtructuyen.phong.CuaToiScr;
+import pages.tructuyen.tabtructuyen.phong.PhongScr;
 import pages.tructuyen.tabtructuyen.phong.TaoPhongScr;
 
 /**
@@ -75,15 +76,15 @@ public class TrucTuyenScr extends BaseScr {
     }
 
     /** Một dòng phòng trong danh sách kết quả (Android). */
-    private static By androidRoomRowById(String id) {
-        String esc = escXPath(id);
+    private static By androidRoomRowByName(String roomName) {
+        String esc = escXPath(roomName);
         return AppiumBy.xpath(
                 "//android.view.View[@clickable='true' and contains(@content-desc, '" + esc + "')]");
     }
 
     /** Một dòng phòng trong danh sách kết quả (iOS). */
-    private static By iosRoomRowById(String id) {
-        String esc = escXPath(id);
+    private static By iosRoomRowByName(String roomName) {
+        String esc = escXPath(roomName);
         return AppiumBy.xpath("//*[contains(@name, '" + esc + "')]");
     }
 
@@ -166,35 +167,54 @@ public class TrucTuyenScr extends BaseScr {
         click(btnSearch);
     }
 
-    /**
-     * Tìm phòng theo ID — ô nhập và dòng kết quả: một locator từng nền, không OR nội bộ.
-     */
-    public Object enterRoom(String id) {
-        clickSearch();
-
-        By searchInput = byPlatform(driver, androidSearchInput(), iosSearchInput());
-        type(searchInput, id);
-
+    private void submitRoomSearch(By searchInput) {
+        if (driver instanceof IOSDriver) {
+            find(searchInput).sendKeys("\n");
+            return;
+        }
         driver.executeScript("mobile: performEditorAction", java.util.Map.of("action", "search"));
+    }
 
-        By noRoomLoc = lblKhongCoPhong();
-        By roomLoc = driver instanceof IOSDriver ? iosRoomRowById(id) : androidRoomRowById(id);
-
+    private void waitRoomResultLoaded(By roomLoc, By noRoomLoc) {
         try {
             wait.until(org.openqa.selenium.support.ui.ExpectedConditions.or(
                     org.openqa.selenium.support.ui.ExpectedConditions.visibilityOfElementLocated(roomLoc),
                     org.openqa.selenium.support.ui.ExpectedConditions.visibilityOfElementLocated(noRoomLoc)
             ));
-        } catch (Exception e) {
-            // chờ isDisplayed bên dưới
+        } catch (Exception ignored) {
+            // fallback check bên dưới
         }
+    }
+
+    /**
+     * Enter phòng theo tên:
+     * 1) click Search
+     * 2) nhập roomName
+     * 3) submit (Enter/Search) và đợi kết quả load
+     * 4) click đúng dòng phòng để vào {@link PhongScr}
+     */
+    public PhongScr enterRoom(String roomName) {
+        clickSearch();
+
+        By searchInput = byPlatform(driver, androidSearchInput(), iosSearchInput());
+        type(searchInput, roomName);
+
+        submitRoomSearch(searchInput);
+
+        By noRoomLoc = lblKhongCoPhong();
+        By roomLoc = driver instanceof IOSDriver ? iosRoomRowByName(roomName) : androidRoomRowByName(roomName);
+        waitRoomResultLoaded(roomLoc, noRoomLoc);
 
         if (isDisplayed(noRoomLoc)) {
-            return noRoomLoc;
+            throw new RuntimeException("Không tìm thấy phòng: " + roomName);
         }
 
         click(roomLoc);
-        return new pages.tructuyen.tabtructuyen.phong.PhongScr(driver);
+        PhongScr phongScr = new PhongScr(driver);
+        if (!phongScr.isLoaded(roomName)) {
+            throw new RuntimeException("Không vào được phòng sau khi tìm kiếm: " + roomName);
+        }
+        return phongScr;
     }
 
     public KhamPhaScr clickKhamPha() {

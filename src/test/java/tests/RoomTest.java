@@ -47,12 +47,16 @@ public class RoomTest extends BaseDriver {
             () -> Assert.assertTrue(roomPage.isRoomNameDisplayed(roomName), "Tên phòng không khớp: " + roomName)
         );
 
-        PhongScr phongScr = StepUtils.step("Bấm vào phòng vừa tạo",
-            () -> roomPage.clickRoom(roomName)
+        PhongScr phongScr = StepUtils.step("Tìm và vào phòng vừa tạo từ Search",
+            () -> trucTuyenScr.enterRoom(roomName)
         );
 
         StepUtils.step("Verify màn hình phòng hiển thị đúng tên",
             () -> Assert.assertTrue(phongScr.isLoaded(roomName), "Không vào được màn hình phòng: " + roomName)
+        );
+
+        StepUtils.step("Xóa phòng vừa tạo từ Thông tin phòng",
+            () -> phongScr.openThongTinPhong().deleteRoom(roomName)
         );
     }
 }

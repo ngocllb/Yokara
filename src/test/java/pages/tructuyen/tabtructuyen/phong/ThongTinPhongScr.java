@@ -82,6 +82,11 @@ public class ThongTinPhongScr extends BaseScr {
             " or @content-desc='Xác nhận' or @text='Xác nhận' or @name='Xác nhận' or @label='Xác nhận'" +
             " or @content-desc='OK' or @text='OK' or @name='OK' or @label='OK']");
 
+    // ─── Xóa phòng ─────────────────────────────────────────────────────────────
+
+    private final By btnXoaPhong;
+    private final By btnCoXacNhan;
+
     // ─── Constructor ──────────────────────────────────────────────────────────
 
     public ThongTinPhongScr(AppiumDriver driver) {
@@ -92,6 +97,22 @@ public class ThongTinPhongScr extends BaseScr {
         this.txtThongBao = byPlatform(driver, 
                 AppiumBy.className("android.widget.EditText"), 
                 AppiumBy.xpath("//XCUIElementTypeTextField | //XCUIElementTypeTextView"));
+        this.btnXoaPhong = byIdThenFallback(
+                driver,
+                "com.yokara.v3:id/tvDeleteRoom",
+                "Xóa phòng",
+                AppiumBy.xpath(
+                        "//*[contains(@content-desc,'Xóa phòng') or contains(@text,'Xóa phòng') "
+                                + "or contains(@name,'Xóa phòng') or contains(@label,'Xóa phòng')]")
+        );
+        this.btnCoXacNhan = byIdThenFallback(
+                driver,
+                "android:id/button1",
+                "Có",
+                AppiumBy.xpath(
+                        "//*[(@content-desc='Có' or @text='Có' or @name='Có' or @label='Có') "
+                                + "or (@content-desc='OK' or @text='OK' or @name='OK' or @label='OK')]")
+        );
     }
 
     // ─── Checks ───────────────────────────────────────────────────────────────
@@ -179,6 +200,20 @@ public class ThongTinPhongScr extends BaseScr {
 
         // Lưu
         click(btnLuuThongBao);
+    }
+
+    /**
+     * Xóa phòng hiện tại từ màn hình Thông tin phòng.
+     * Flow: click "Xóa phòng" -> xác nhận "Có".
+     *
+     * @param roomName tên phòng (dùng để log/đối soát luồng test)
+     * @return {@link TrucTuyenScr} sau khi xóa thành công
+     */
+    public pages.tructuyen.tabtructuyen.TrucTuyenScr deleteRoom(String roomName) {
+        click(btnXoaPhong);
+        click(btnCoXacNhan);
+        System.out.println("[ThongTinPhongScr] Đã xóa phòng: " + roomName);
+        return new pages.tructuyen.tabtructuyen.TrucTuyenScr(driver);
     }
 
     // ─── Navigation ───────────────────────────────────────────────────────────
