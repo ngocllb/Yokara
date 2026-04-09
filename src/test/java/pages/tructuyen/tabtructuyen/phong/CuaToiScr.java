@@ -81,12 +81,37 @@ public class CuaToiScr extends BaseScr {
      * @param expectedName tên phòng cần tìm (sẽ tự truncate cho an toàn)
      */
     public boolean isRoomNameDisplayed(String expectedName) {
+        By locator = roomLocator(expectedName);
+
+        // Sau khi tạo phòng, danh sách thường cập nhật chậm vài giây.
+        // Poll trước, rồi mới swipe nhẹ để tránh fail sớm.
+        for (int attempt = 0; attempt < 12; attempt++) {
+            if (isDisplayed(locator)) {
+                return true;
+            }
+
+            // Sau ~3 giây bắt đầu swipe để tìm card nằm ngoài viewport.
+            if (attempt >= 4 && attempt % 2 == 0) {
+                try {
+                    swipeUp();
+                } catch (Exception ignored) {
+                    // giữ vòng lặp polling
+                }
+            }
+
+            try {
+                Thread.sleep(700);
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+
+        // Fallback cuối cùng: dùng flow scroll chuẩn đang có.
         try {
-            By locator = roomLocator(expectedName);
-            // Scroll tìm phòng nếu chưa thấy
             scrollToElement(locator);
             return isDisplayed(locator);
-        } catch (Exception e) {
+        } catch (Exception ignored) {
             return false;
         }
     }

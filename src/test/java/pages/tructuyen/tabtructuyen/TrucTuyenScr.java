@@ -21,6 +21,7 @@ import pages.tructuyen.tabtructuyen.phong.TaoPhongScr;
  * nút tìm (icon) tách {@code byPlatform} theo dump.
  */
 public class TrucTuyenScr extends BaseScr {
+    private static final int SEARCH_NAME_MAX_LEN = 24;
 
     private final By lblTrucTuyen;
     private final By lblKhamPha;
@@ -75,17 +76,50 @@ public class TrucTuyenScr extends BaseScr {
         return AppiumBy.xpath("//XCUIElementTypeSearchField");
     }
 
+    private static String safeSearchName(String roomName) {
+        if (roomName == null) {
+            return "";
+        }
+        return roomName.length() > SEARCH_NAME_MAX_LEN
+                ? roomName.substring(0, SEARCH_NAME_MAX_LEN)
+                : roomName;
+    }
+
+    private static String roomKey(String roomName) {
+        if (roomName == null) {
+            return "";
+        }
+        String t = roomName.trim();
+        if (t.isEmpty()) {
+            return "";
+        }
+        int space = t.indexOf(' ');
+        return space > 0 ? t.substring(0, space) : t;
+    }
+
     /** Một dòng phòng trong danh sách kết quả (Android). */
     private static By androidRoomRowByName(String roomName) {
-        String esc = escXPath(roomName);
+        String searchName = escXPath(safeSearchName(roomName));
+        String key = escXPath(roomKey(roomName));
         return AppiumBy.xpath(
-                "//android.view.View[@clickable='true' and contains(@content-desc, '" + esc + "')]");
+                "//android.view.View[@clickable='true' and ("
+                        + "contains(@content-desc, '" + searchName + "') "
+                        + "or contains(@content-desc, '" + key + "') "
+                        + "or (contains(@content-desc, 'Talk') and contains(@content-desc, '" + key + "'))"
+                        + ")]");
     }
 
     /** Một dòng phòng trong danh sách kết quả (iOS). */
     private static By iosRoomRowByName(String roomName) {
-        String esc = escXPath(roomName);
-        return AppiumBy.xpath("//*[contains(@name, '" + esc + "')]");
+        String searchName = escXPath(safeSearchName(roomName));
+        String key = escXPath(roomKey(roomName));
+        return AppiumBy.xpath(
+                "//*[contains(@name, '" + searchName + "') "
+                        + "or contains(@label, '" + searchName + "') "
+                        + "or contains(@name, '" + key + "') "
+                        + "or contains(@label, '" + key + "') "
+                        + "or (self::XCUIElementTypeOther and contains(@name,'Talk') and contains(@name, '" + key + "')) "
+                        + "or (self::XCUIElementTypeOther and contains(@label,'Talk') and contains(@label, '" + key + "'))]");
     }
 
     private static String escXPath(String raw) {
