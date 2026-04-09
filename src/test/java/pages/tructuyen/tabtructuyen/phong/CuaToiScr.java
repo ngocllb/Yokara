@@ -18,6 +18,9 @@ public class CuaToiScr extends BaseScr {
 
     /** Số ký tự tối đa dùng để tìm phòng (iOS/Android có thể truncate tên dài trong card). */
     private static final int SEARCH_NAME_MAX_LEN = 24;
+    private final By tabCuaToi = AppiumBy.accessibilityId("Của tôi");
+    private final By roomCardCandidates = AppiumBy.xpath(
+            "//*[contains(@content-desc,'Talk') or contains(@name,'Talk') or contains(@label,'Talk')]");
 
     public CuaToiScr(AppiumDriver driver) {
         super(driver);
@@ -72,6 +75,42 @@ public class CuaToiScr extends BaseScr {
                         + "or (self::XCUIElementTypeOther and contains(@label,'Talk') and contains(@label, '" + key + "'))]");
     }
 
+    private String attr(org.openqa.selenium.WebElement e, String name) {
+        try {
+            String v = e.getAttribute(name);
+            return v == null ? "" : v.trim();
+        } catch (Exception ignored) {
+            return "";
+        }
+    }
+
+    private void logRoomCardsSnapshot(String expectedName, int attempt) {
+        try {
+            java.util.List<org.openqa.selenium.WebElement> cards = finds(roomCardCandidates);
+            String key = roomKey(expectedName);
+            String searchName = safeSearchName(expectedName);
+            System.out.println("[CuaToiScr] attempt=" + attempt
+                    + " | expected=" + expectedName
+                    + " | key=" + key
+                    + " | searchName=" + searchName
+                    + " | cards=" + cards.size());
+            int max = Math.min(cards.size(), 8);
+            for (int i = 0; i < max; i++) {
+                org.openqa.selenium.WebElement c = cards.get(i);
+                String line = attr(c, "content-desc");
+                if (line.isEmpty()) {
+                    line = attr(c, "name");
+                }
+                if (line.isEmpty()) {
+                    line = attr(c, "label");
+                }
+                System.out.println("[CuaToiScr] card[" + i + "]=" + line.replace("\n", " | "));
+            }
+        } catch (Exception e) {
+            System.out.println("[CuaToiScr] snapshot failed: " + e.getMessage());
+        }
+    }
+
     // ─── Checks ───────────────────────────────────────────────────────────────
 
     /**
@@ -83,20 +122,22 @@ public class CuaToiScr extends BaseScr {
     public boolean isRoomNameDisplayed(String expectedName) {
         By locator = roomLocator(expectedName);
 
+        // Đảm bảo đang đứng đúng tab "Của tôi".
+        try {
+            click(tabCuaToi);
+        } catch (Exception ignored) {
+            // Một số build đã ở sẵn tab, không cần fail vì thao tác này.
+        }
+
         // Sau khi tạo phòng, danh sách thường cập nhật chậm vài giây.
-        // Poll trước, rồi mới swipe nhẹ để tránh fail sớm.
-        for (int attempt = 0; attempt < 12; attempt++) {
+        // Poll trước, KHÔNG scroll sớm để tránh cuộn mất card mới tạo.
+        for (int attempt = 0; attempt < 16; attempt++) {
             if (isDisplayed(locator)) {
                 return true;
             }
 
-            // Sau ~3 giây bắt đầu swipe để tìm card nằm ngoài viewport.
-            if (attempt >= 4 && attempt % 2 == 0) {
-                try {
-                    swipeUp();
-                } catch (Exception ignored) {
-                    // giữ vòng lặp polling
-                }
+            if (attempt == 3 || attempt == 7 || attempt == 11 || attempt == 15) {
+                logRoomCardsSnapshot(expectedName, attempt);
             }
 
             try {
@@ -109,9 +150,11 @@ public class CuaToiScr extends BaseScr {
 
         // Fallback cuối cùng: dùng flow scroll chuẩn đang có.
         try {
+            // Nếu card mới đã bị đẩy xuống, thử cuộn tìm một lần.
             scrollToElement(locator);
             return isDisplayed(locator);
         } catch (Exception ignored) {
+            logRoomCardsSnapshot(expectedName, 999);
             return false;
         }
     }
