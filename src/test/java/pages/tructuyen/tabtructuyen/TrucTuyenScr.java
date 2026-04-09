@@ -7,6 +7,9 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 import base.BaseScr;
 import io.appium.java_client.AppiumBy;
 import io.appium.java_client.AppiumDriver;
+import io.appium.java_client.android.AndroidDriver;
+import io.appium.java_client.android.nativekey.AndroidKey;
+import io.appium.java_client.android.nativekey.KeyEvent;
 import io.appium.java_client.ios.IOSDriver;
 
 import java.time.Duration;
@@ -208,13 +211,20 @@ public class TrucTuyenScr extends BaseScr {
             } catch (Exception ignored) {
             }
             By iosKeyboardSearch = AppiumBy.iOSNsPredicateString(
-                    "type == 'XCUIElementTypeButton' AND (name == 'Search' OR name == 'Tìm kiếm')");
+                    "type == 'XCUIElementTypeButton' AND (name == 'Search' OR name == 'Tìm kiếm' OR name == 'Xong' "
+                            + "OR label == 'Search' OR label == 'Tìm kiếm' OR label == 'Xong')");
             if (isDisplayed(iosKeyboardSearch)) {
                 click(iosKeyboardSearch);
             }
             return;
         }
-        driver.executeScript("mobile: performEditorAction", java.util.Map.of("action", "search"));
+        try {
+            driver.executeScript("mobile: performEditorAction", java.util.Map.of("action", "search"));
+        } catch (Exception ignored) {
+        }
+        if (driver instanceof AndroidDriver) {
+            ((AndroidDriver) driver).pressKey(new KeyEvent(AndroidKey.ENTER));
+        }
     }
 
     private void waitRoomResultLoaded(By roomLoc, By noRoomLoc) {
@@ -239,8 +249,9 @@ public class TrucTuyenScr extends BaseScr {
         clickSearch();
 
         By searchInput = byPlatform(driver, androidSearchInput(), iosSearchInput());
+        find(searchInput).click();
         find(searchInput).clear();
-        type(searchInput, roomName);
+        find(searchInput).sendKeys(roomName);
 
         submitRoomSearch(searchInput);
 

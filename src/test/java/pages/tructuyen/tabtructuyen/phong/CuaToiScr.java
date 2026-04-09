@@ -7,6 +7,9 @@ import org.openqa.selenium.support.ui.ExpectedConditions;
 import base.BaseScr;
 import io.appium.java_client.AppiumBy;
 import io.appium.java_client.AppiumDriver;
+import io.appium.java_client.android.AndroidDriver;
+import io.appium.java_client.android.nativekey.AndroidKey;
+import io.appium.java_client.android.nativekey.KeyEvent;
 import io.appium.java_client.ios.IOSDriver;
 
 /**
@@ -193,12 +196,19 @@ public class CuaToiScr extends BaseScr {
             } catch (Exception ignored) {
             }
             By iosKeyboardSearch = AppiumBy.iOSNsPredicateString(
-                    "type == 'XCUIElementTypeButton' AND (name == 'Search' OR name == 'Tìm kiếm')");
+                    "type == 'XCUIElementTypeButton' AND (name == 'Search' OR name == 'Tìm kiếm' OR name == 'Xong' "
+                            + "OR label == 'Search' OR label == 'Tìm kiếm' OR label == 'Xong')");
             if (isDisplayed(iosKeyboardSearch)) {
                 click(iosKeyboardSearch);
             }
         } else {
-            driver.executeScript("mobile: performEditorAction", java.util.Map.of("action", "search"));
+            try {
+                driver.executeScript("mobile: performEditorAction", java.util.Map.of("action", "search"));
+            } catch (Exception ignored) {
+            }
+            if (driver instanceof AndroidDriver) {
+                ((AndroidDriver) driver).pressKey(new KeyEvent(AndroidKey.ENTER));
+            }
         }
     }
 
@@ -214,8 +224,9 @@ public class CuaToiScr extends BaseScr {
 
         click(btnSearch);
         // Tránh dính text cũ khiến search sai.
+        find(txtSearchInput).click();
         find(txtSearchInput).clear();
-        type(txtSearchInput, expectedName);
+        find(txtSearchInput).sendKeys(expectedName);
         submitSearch();
 
         try {
