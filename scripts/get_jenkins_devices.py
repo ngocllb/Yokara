@@ -2,19 +2,25 @@
 import subprocess
 import re
 import sys
+import shutil
 
 
-def run_command(cmd):
+def run_command(cmd, quiet=False):
     try:
         return subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode("utf-8", errors="ignore")
     except Exception as e:
-        print(f"[get_jenkins_devices] command failed: {' '.join(cmd)} => {e}", file=sys.stderr)
+        if not quiet:
+            print(f"[get_jenkins_devices] command failed: {' '.join(cmd)} => {e}", file=sys.stderr)
         return ""
+
+
+def command_exists(name):
+    return shutil.which(name) is not None
 
 
 def get_android_devices():
     devices = []
-    output = run_command(["adb", "devices"])
+    output = run_command(["adb", "devices"], quiet=True)
 
     if not output:
         return devices
@@ -38,20 +44,21 @@ def get_ios_devices():
     devices = []
 
     # Cách 1: idevice_id -l
-    output = run_command(["idevice_id", "-l"])
-    if output:
-        lines = [line.strip() for line in output.splitlines() if line.strip()]
-        for line in lines:
-            # hỗ trợ cả UDID 40 ký tự và dạng có dấu -
-            if re.fullmatch(r"[0-9a-fA-F]{40}", line) or re.fullmatch(r"[0-9A-Fa-f-]{20,}", line):
-                devices.append({
-                    "platform": "ios",
-                    "udid": line
-                })
+    if command_exists("idevice_id"):
+        output = run_command(["idevice_id", "-l"], quiet=True)
+        if output:
+            lines = [line.strip() for line in output.splitlines() if line.strip()]
+            for line in lines:
+                # hỗ trợ cả UDID 40 ký tự và dạng có dấu -
+                if re.fullmatch(r"[0-9a-fA-F]{40}", line) or re.fullmatch(r"[0-9A-Fa-f-]{20,}", line):
+                    devices.append({
+                        "platform": "ios",
+                        "udid": line
+                    })
 
     # Cách 2: fallback tidevice nếu idevice_id không ra gì
-    if not devices:
-        output = run_command(["tidevice", "list", "--json"])
+    if not devices and command_exists("tidevice"):
+        output = run_command(["tidevice", "list", "--json"], quiet=True)
         if output:
             for line in output.splitlines():
                 line = line.strip()

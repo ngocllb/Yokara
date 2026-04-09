@@ -15,7 +15,7 @@ pipeline {
         USER_HOME = '/Users/quhuy'
         ANDROID_HOME = '/Users/quhuy/Library/Android/sdk'
         ANDROID_SDK_ROOT = '/Users/quhuy/Library/Android/sdk'
-        MOBILE_EXTRA_PATH = '/opt/homebrew/bin:/usr/local/bin:/Users/quhuy/Library/Android/sdk/platform-tools:/Users/quhuy/Library/Android/sdk/emulator'
+        MOBILE_EXTRA_PATH = '/Users/quhuy/.local/bin:/opt/homebrew/bin:/usr/local/bin:/Users/quhuy/Library/Android/sdk/platform-tools:/Users/quhuy/Library/Android/sdk/emulator'
         IDEVICE_ID_BIN = '/opt/homebrew/bin/idevice_id'
         APPIUM_BIN = '/Users/quhuy/.nvm/versions/node/v22.22.2/bin/appium'
         PYTHON_BIN = '/opt/homebrew/bin/python3'
@@ -59,6 +59,7 @@ pipeline {
                         which adb || true
                         which appium || true
                         which idevice_id || true
+                        which tidevice || true
                         which curl || true
                         which lsof || true
                         which mvn || true
@@ -67,6 +68,7 @@ pipeline {
                         python3 --version || true
                         adb version || true
                         appium --version || true
+                        tidevice version || true
                         mvn -v || true
                     '''
                 }
@@ -88,7 +90,7 @@ pipeline {
                         ).trim()
 
                         if (!devicesStr) {
-                            error("No physically connected devices found via ADB/idevice_id!")
+                            error("No physically connected devices found via adb / idevice_id / tidevice!")
                         }
 
                         def lines = devicesStr.split('\n')
