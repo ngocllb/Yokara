@@ -39,8 +39,8 @@ public final class GenerateHcBoxSuite {
         sb.append("<!-- Auto-generated — mvn test -Phc-box — song song theo số thiết bị USB -->\n");
         sb.append("<suite name=\"Yokara HC BOX (N thiết bị)\" parallel=\"tests\" thread-count=\"")
                 .append(n).append("\">\n\n");
+        sb.append("    <!-- AllureTestNg: SPI allure-testng — tránh khai báo trùng trong suite -->\n");
         sb.append("    <listeners>\n");
-        sb.append("        <listener class-name=\"io.qameta.allure.testng.AllureTestNg\"/>\n");
         sb.append("        <listener class-name=\"listeners.AllureListener\"/>\n");
         sb.append("    </listeners>\n\n");
 

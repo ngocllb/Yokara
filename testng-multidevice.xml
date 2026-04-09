@@ -2,8 +2,8 @@
 <!-- none: cùng một máy + một iPhone → không chạy 2 session Appium song song (WDA/tab bar flake). Jenkins nhiều agent: tách job hoặc dùng profile parallel riêng. -->
 <suite name="Yokara Multi-Device (USB thật)" parallel="none">
 
+    <!-- AllureTestNg: auto SPI từ dependency allure-testng — chỉ giữ listener tùy chỉnh -->
     <listeners>
-        <listener class-name="io.qameta.allure.testng.AllureTestNg"/>
         <listener class-name="listeners.AllureListener"/>
     </listeners>
 
