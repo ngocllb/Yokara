@@ -1,10 +1,13 @@
 package pages.tructuyen.tabtructuyen.phong;
 
 import org.openqa.selenium.By;
+import org.openqa.selenium.TimeoutException;
+import org.openqa.selenium.support.ui.ExpectedConditions;
 
 import base.BaseScr;
 import io.appium.java_client.AppiumBy;
 import io.appium.java_client.AppiumDriver;
+import io.appium.java_client.ios.IOSDriver;
 
 /**
  * CuaToiScr – Danh sách phòng "Của tôi" (sub-tab trong Trực tuyến).
@@ -21,9 +24,31 @@ public class CuaToiScr extends BaseScr {
     private final By tabCuaToi = AppiumBy.accessibilityId("Của tôi");
     private final By roomCardCandidates = AppiumBy.xpath(
             "//*[contains(@content-desc,'Talk') or contains(@name,'Talk') or contains(@label,'Talk')]");
+    private final By btnSearch;
+    private final By txtSearchInput;
+    private final By lblKhongCoPhong = AppiumBy.accessibilityId("Không có phòng");
 
     public CuaToiScr(AppiumDriver driver) {
         super(driver);
+        this.btnSearch = byPlatform(driver, androidBtnSearch(), iosBtnSearch());
+        this.txtSearchInput = byPlatform(driver, AppiumBy.className("android.widget.EditText"),
+                AppiumBy.xpath("//XCUIElementTypeSearchField"));
+    }
+
+    private static By androidBtnSearch() {
+        // Theo dump Android tab Trực tuyến/Của tôi: icon search nằm cạnh "Khám phá".
+        return AppiumBy.xpath(
+                "//android.view.View[@content-desc='Khám phá']/following-sibling::android.widget.ImageView[1]");
+    }
+
+    private static By iosBtnSearch() {
+        // Ưu tiên xpath tương đối theo text "Khám phá"; absolute xpath làm fallback cuối.
+        return AppiumBy.xpath(
+                "(//XCUIElementTypeStaticText[@name='Khám phá']/following-sibling::XCUIElementTypeImage[1])"
+                        + " | (//XCUIElementTypeWindow/XCUIElementTypeOther/XCUIElementTypeOther/"
+                        + "XCUIElementTypeOther/XCUIElementTypeOther[1]/XCUIElementTypeOther/"
+                        + "XCUIElementTypeOther/XCUIElementTypeOther/XCUIElementTypeOther[2]/"
+                        + "XCUIElementTypeOther[2]/XCUIElementTypeOther[2]/XCUIElementTypeImage[1])");
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
@@ -157,6 +182,38 @@ public class CuaToiScr extends BaseScr {
             logRoomCardsSnapshot(expectedName, 999);
             return false;
         }
+    }
+
+    private void submitSearch() {
+        if (driver instanceof IOSDriver) {
+            find(txtSearchInput).sendKeys("\n");
+        } else {
+            driver.executeScript("mobile: performEditorAction", java.util.Map.of("action", "search"));
+        }
+    }
+
+    /**
+     * Verify phòng bằng search trong tab Của tôi để tránh nhiễu do danh sách nhiều card.
+     */
+    public boolean isRoomNameDisplayedBySearch(String expectedName) {
+        By locator = roomLocator(expectedName);
+        try {
+            click(tabCuaToi);
+        } catch (Exception ignored) {
+        }
+
+        click(btnSearch);
+        type(txtSearchInput, expectedName);
+        submitSearch();
+
+        try {
+            wait.until(ExpectedConditions.or(
+                    ExpectedConditions.visibilityOfElementLocated(locator),
+                    ExpectedConditions.visibilityOfElementLocated(lblKhongCoPhong)
+            ));
+        } catch (TimeoutException ignored) {
+        }
+        return isDisplayed(locator) && !isDisplayed(lblKhongCoPhong);
     }
 
     // ─── Actions ──────────────────────────────────────────────────────────────

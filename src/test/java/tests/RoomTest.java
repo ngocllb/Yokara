@@ -44,7 +44,7 @@ public class RoomTest extends BaseDriver {
         );
 
         StepUtils.step("Verify phòng đã được tạo thành công",
-            () -> Assert.assertTrue(roomPage.isRoomNameDisplayed(roomName), "Tên phòng không khớp: " + roomName)
+            () -> Assert.assertTrue(roomPage.isRoomNameDisplayedBySearch(roomName), "Tên phòng không khớp: " + roomName)
         );
 
         PhongScr phongScr = StepUtils.step("Tìm và vào phòng vừa tạo từ Search",
