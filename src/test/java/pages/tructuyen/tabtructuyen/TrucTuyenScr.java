@@ -73,7 +73,7 @@ public class TrucTuyenScr extends BaseScr {
 
     /** Trường nhập sau khi mở tìm kiếm — một SearchField (dump iOS). */
     private static By iosSearchInput() {
-        return AppiumBy.xpath("//XCUIElementTypeSearchField");
+        return AppiumBy.accessibilityId("Nhập ID, tên phòng");
     }
 
     private static String safeSearchName(String roomName) {
@@ -203,7 +203,15 @@ public class TrucTuyenScr extends BaseScr {
 
     private void submitRoomSearch(By searchInput) {
         if (driver instanceof IOSDriver) {
-            find(searchInput).sendKeys("\n");
+            try {
+                find(searchInput).sendKeys("\n");
+            } catch (Exception ignored) {
+            }
+            By iosKeyboardSearch = AppiumBy.iOSNsPredicateString(
+                    "type == 'XCUIElementTypeButton' AND (name == 'Search' OR name == 'Tìm kiếm')");
+            if (isDisplayed(iosKeyboardSearch)) {
+                click(iosKeyboardSearch);
+            }
             return;
         }
         driver.executeScript("mobile: performEditorAction", java.util.Map.of("action", "search"));
@@ -231,6 +239,7 @@ public class TrucTuyenScr extends BaseScr {
         clickSearch();
 
         By searchInput = byPlatform(driver, androidSearchInput(), iosSearchInput());
+        find(searchInput).clear();
         type(searchInput, roomName);
 
         submitRoomSearch(searchInput);

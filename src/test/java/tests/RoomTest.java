@@ -19,7 +19,7 @@ public class RoomTest extends BaseDriver {
      */
     private static String buildUniqueRoomName() {
         String key = "r" + Long.toString(System.currentTimeMillis(), 36);
-        return key + " ngoc lele bao";
+        return key + "nllb";
     }
 
     @Test

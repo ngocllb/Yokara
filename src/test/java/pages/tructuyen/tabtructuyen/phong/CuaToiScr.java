@@ -31,8 +31,10 @@ public class CuaToiScr extends BaseScr {
     public CuaToiScr(AppiumDriver driver) {
         super(driver);
         this.btnSearch = byPlatform(driver, androidBtnSearch(), iosBtnSearch());
-        this.txtSearchInput = byPlatform(driver, AppiumBy.className("android.widget.EditText"),
-                AppiumBy.xpath("//XCUIElementTypeSearchField"));
+        this.txtSearchInput = byPlatform(
+                driver,
+                AppiumBy.className("android.widget.EditText"),
+                AppiumBy.accessibilityId("Nhập ID, tên phòng"));
     }
 
     private static By androidBtnSearch() {
@@ -186,7 +188,15 @@ public class CuaToiScr extends BaseScr {
 
     private void submitSearch() {
         if (driver instanceof IOSDriver) {
-            find(txtSearchInput).sendKeys("\n");
+            try {
+                find(txtSearchInput).sendKeys("\n");
+            } catch (Exception ignored) {
+            }
+            By iosKeyboardSearch = AppiumBy.iOSNsPredicateString(
+                    "type == 'XCUIElementTypeButton' AND (name == 'Search' OR name == 'Tìm kiếm')");
+            if (isDisplayed(iosKeyboardSearch)) {
+                click(iosKeyboardSearch);
+            }
         } else {
             driver.executeScript("mobile: performEditorAction", java.util.Map.of("action", "search"));
         }
@@ -203,6 +213,8 @@ public class CuaToiScr extends BaseScr {
         }
 
         click(btnSearch);
+        // Tránh dính text cũ khiến search sai.
+        find(txtSearchInput).clear();
         type(txtSearchInput, expectedName);
         submitSearch();
 
