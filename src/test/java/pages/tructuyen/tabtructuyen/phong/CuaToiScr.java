@@ -24,6 +24,7 @@ public class CuaToiScr extends BaseScr {
 
     /** Số ký tự tối đa dùng để tìm phòng (iOS/Android có thể truncate tên dài trong card). */
     private static final int SEARCH_NAME_MAX_LEN = 24;
+    private static final int ROOM_KEY_LEN = 6;
     private final By tabCuaToi = AppiumBy.accessibilityId("Của tôi");
     private final By roomCardCandidates = AppiumBy.xpath(
             "//*[contains(@content-desc,'Talk') or contains(@name,'Talk') or contains(@label,'Talk')]");
@@ -83,7 +84,8 @@ public class CuaToiScr extends BaseScr {
             return "";
         }
         int space = t.indexOf(' ');
-        return space > 0 ? t.substring(0, space) : t;
+        String key = space > 0 ? t.substring(0, space) : t;
+        return key.length() > ROOM_KEY_LEN ? key.substring(0, ROOM_KEY_LEN) : key;
     }
 
     /**
@@ -226,7 +228,7 @@ public class CuaToiScr extends BaseScr {
         // Tránh dính text cũ khiến search sai.
         find(txtSearchInput).click();
         find(txtSearchInput).clear();
-        find(txtSearchInput).sendKeys(expectedName);
+        find(txtSearchInput).sendKeys(roomKey(expectedName));
         submitSearch();
 
         try {

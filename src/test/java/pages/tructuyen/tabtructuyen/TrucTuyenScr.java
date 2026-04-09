@@ -25,6 +25,7 @@ import pages.tructuyen.tabtructuyen.phong.TaoPhongScr;
  */
 public class TrucTuyenScr extends BaseScr {
     private static final int SEARCH_NAME_MAX_LEN = 24;
+    private static final int ROOM_KEY_LEN = 6;
 
     private final By lblTrucTuyen;
     private final By lblKhamPha;
@@ -97,7 +98,8 @@ public class TrucTuyenScr extends BaseScr {
             return "";
         }
         int space = t.indexOf(' ');
-        return space > 0 ? t.substring(0, space) : t;
+        String key = space > 0 ? t.substring(0, space) : t;
+        return key.length() > ROOM_KEY_LEN ? key.substring(0, ROOM_KEY_LEN) : key;
     }
 
     /** Một dòng phòng trong danh sách kết quả (Android). */
@@ -251,7 +253,7 @@ public class TrucTuyenScr extends BaseScr {
         By searchInput = byPlatform(driver, androidSearchInput(), iosSearchInput());
         find(searchInput).click();
         find(searchInput).clear();
-        find(searchInput).sendKeys(roomName);
+        find(searchInput).sendKeys(roomKey(roomName));
 
         submitRoomSearch(searchInput);
 

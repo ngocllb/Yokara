@@ -18,8 +18,11 @@ public class RoomTest extends BaseDriver {
      * iOS card phòng thường truncate phần cuối; đặt mã unique ở đầu để locator luôn còn lại sau truncate.
      */
     private static String buildUniqueRoomName() {
-        String key = "r" + Long.toString(System.currentTimeMillis(), 36);
-        return key + "nllb";
+        String key = Long.toString(System.currentTimeMillis(), 36);
+        if (key.length() > 6) {
+            key = key.substring(key.length() - 6);
+        }
+        return key + " nllb";
     }
 
     @Test
