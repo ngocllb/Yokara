@@ -17,6 +17,9 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <suiteXmlFile>testng-multidevice.xml</suiteXmlFile>
 
+        <!-- Jenkins/CLI: -Dallure.results.directory=... phải override được (không hardcode trong surefire). -->
+        <allure.results.directory>${project.basedir}/allure-results</allure.results.directory>
+
     </properties>
 
     <dependencies>
@@ -102,7 +105,7 @@
                         <suiteXmlFile>${suiteXmlFile}</suiteXmlFile>
                     </suiteXmlFiles>
                     <systemPropertyVariables>
-                        <allure.results.directory>${project.basedir}/allure-results</allure.results.directory>
+                        <allure.results.directory>${allure.results.directory}</allure.results.directory>
                         <!-- Tùy chọn: profile test data (merge testdata-<profile>.properties) -->
                         <!-- <testdata.profile>ci</testdata.profile> -->
                     </systemPropertyVariables>
@@ -116,7 +119,7 @@
                 <version>2.12.0</version>
                 <configuration>
                     <reportVersion>2.24.0</reportVersion>
-                    <resultsDirectory>${project.basedir}/allure-results</resultsDirectory>
+                    <resultsDirectory>${allure.results.directory}</resultsDirectory>
                 </configuration>
             </plugin>
 
@@ -146,7 +149,7 @@
                                 <suiteXmlFile>testng-loginmethod-ios.xml</suiteXmlFile>
                             </suiteXmlFiles>
                             <systemPropertyVariables>
-                                <allure.results.directory>${project.basedir}/allure-results</allure.results.directory>
+                                <allure.results.directory>${allure.results.directory}</allure.results.directory>
                             </systemPropertyVariables>
                         </configuration>
                     </plugin>
@@ -293,7 +296,7 @@
                                 <suiteXmlFile>${project.build.directory}/testng-hc-box.xml</suiteXmlFile>
                             </suiteXmlFiles>
                             <systemPropertyVariables>
-                                <allure.results.directory>${project.basedir}/allure-results</allure.results.directory>
+                                <allure.results.directory>${allure.results.directory}</allure.results.directory>
                             </systemPropertyVariables>
                         </configuration>
                     </plugin>

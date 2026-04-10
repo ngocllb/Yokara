@@ -438,6 +438,49 @@ pipeline {
             }
         }
 
+        /*
+         * Gộp kết quả Allure từ từng nhánh song song (allure-merge/<platform>-<udid>/) vào một thư mục phẳng.
+         * Plugin Jenkins Allure thường không ăn glob allure-merge/* — cần một resultsDirectory duy nhất chứa mọi *-result.json.
+         * pom.xml: allure.results.directory phải trỏ tới property ${allure.results.directory} để -D từ Maven có hiệu lực.
+         */
+        stage('Aggregate Allure results') {
+            steps {
+                withEnv([
+                    "HOME=${env.USER_HOME}",
+                    "PATH=${env.FULL_PATH}",
+                    "ANDROID_HOME=${env.ANDROID_HOME}",
+                    "ANDROID_SDK_ROOT=${env.ANDROID_SDK_ROOT}"
+                ]) {
+                    sh '''
+                        set +e
+                        rm -rf allure-combined
+                        mkdir -p allure-combined
+
+                        if [ ! -d allure-merge ]; then
+                          echo "[Allure] Không có thư mục allure-merge — bỏ qua gộp."
+                          exit 0
+                        fi
+
+                        find allure-merge -type f 2>/dev/null | while IFS= read -r f; do
+                          [ -f "$f" ] || continue
+                          base=$(basename "$f")
+                          dest="allure-combined/$base"
+                          if [ -f "$dest" ]; then
+                            parent=$(basename "$(dirname "$f")")
+                            dest="allure-combined/${parent}__${base}"
+                          fi
+                          cp -f "$f" "$dest" || true
+                        done
+
+                        echo "[Allure] Đã gộp $(ls -1 allure-combined 2>/dev/null | wc -l | tr -d " ") file vào allure-combined."
+                        ls -la allure-combined 2>/dev/null | head -80 || true
+                    '''
+                    archiveArtifacts artifacts: 'allure-merge/**', allowEmptyArchive: true
+                    archiveArtifacts artifacts: 'allure-combined/**', allowEmptyArchive: true
+                }
+            }
+        }
+
         stage('Build Dashboard Summary') {
             steps {
                 withEnv([
@@ -508,8 +551,9 @@ pipeline {
                         pkill -f appium || true
                         pkill -f WebDriverAgent || true
 
-                        mkdir -p allure-merge
-                        find allure-merge -type f | head || true
+                        mkdir -p allure-merge allure-combined
+                        find allure-combined -type f 2>/dev/null | head -30 || true
+                        find allure-merge -type f 2>/dev/null | head -20 || true
                     '''
 
                     allure([
@@ -517,7 +561,7 @@ pipeline {
                         jdk: '',
                         properties: [],
                         reportBuildPolicy: 'ALWAYS',
-                        results: [[path: 'allure-merge/*']]
+                        results: [[path: 'allure-combined']]
                     ])
                 }
             }
