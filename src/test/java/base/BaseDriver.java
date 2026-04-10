@@ -7,6 +7,7 @@ import flows.AuthFlow;
 import io.appium.java_client.AppiumBy;
 import io.appium.java_client.AppiumDriver;
 import io.appium.java_client.InteractsWithApps;
+import io.appium.java_client.android.AndroidDriver;
 import io.appium.java_client.ios.IOSDriver;
 import org.openqa.selenium.By;
 import org.openqa.selenium.TimeoutException;
@@ -101,21 +102,50 @@ public class BaseDriver {
             throw new RuntimeException("Driver initialization failed!");
         }
 
-        if (driver instanceof IOSDriver) {
-            try {
-                String bid = ConfigManager.getRequired("ios.bundleId");
-                ((InteractsWithApps) driver).activateApp(bid);
-            } catch (Exception e) {
-                System.out.println("[BaseDriver] iOS activateApp: " + e.getMessage());
-            }
-        }
+        activateAppForCurrentPlatform();
 
         wait = new WebDriverWait(driver, Duration.ofSeconds(15));
         auth = new AuthFlow(driver);
 
         new BaseScr(driver).handleStartupPopups();
-        handleIosLaunchBannerIfPresent();
-        ensureIosMainTabBarVisible();
+        handleLaunchBannerIfPresent();
+        ensureMainTabBarVisible();
+    }
+
+    /**
+     * Đồng bộ iOS/Android: sau khi tạo session, đưa AUT lên foreground bằng bundleId (iOS) hoặc package (Android).
+     */
+    private void activateAppForCurrentPlatform() {
+        String appId = primaryAppIdForPlatform();
+        if (appId == null) {
+            return;
+        }
+        try {
+            ((InteractsWithApps) driver).activateApp(appId);
+        } catch (Exception e) {
+            System.out.println("[BaseDriver] activateApp (" + platformLabel() + "): " + e.getMessage());
+        }
+    }
+
+    private String platformLabel() {
+        if (driver instanceof IOSDriver) {
+            return "ios";
+        }
+        if (driver instanceof AndroidDriver) {
+            return "android";
+        }
+        return "unknown";
+    }
+
+    /** iOS: bundleId AUT. Android: applicationId (package). */
+    private String primaryAppIdForPlatform() {
+        if (driver instanceof IOSDriver) {
+            return ConfigManager.getRequired("ios.bundleId");
+        }
+        if (driver instanceof AndroidDriver) {
+            return ConfigManager.getRequired("android.appPackage");
+        }
+        return null;
     }
 
     private String normalizePlatform(String value) {
@@ -146,8 +176,12 @@ public class BaseDriver {
         return false;
     }
 
-    private void ensureIosMainTabBarVisible() {
-        if (!(driver instanceof IOSDriver)) {
+    /**
+     * Đồng bộ iOS/Android: đảm bảo có bottom tab (Trang chủ / Tôi); nếu không thấy thì terminate + activate AUT.
+     */
+    private void ensureMainTabBarVisible() {
+        String appId = primaryAppIdForPlatform();
+        if (appId == null) {
             return;
         }
 
@@ -157,35 +191,33 @@ public class BaseDriver {
 
         try {
             tabWait.until(d -> !d.findElements(trangChu).isEmpty() || !d.findElements(toi).isEmpty());
-            waitIosTabBarSettled();
+            waitMainTabBarSettled();
             return;
         } catch (TimeoutException e) {
-            System.out.println("[BaseDriver] iOS: chưa thấy thanh tab sau activateApp — thử terminate + activate");
+            System.out.println("[BaseDriver] " + platformLabel()
+                    + ": chưa thấy thanh tab sau activateApp — thử terminate + activate");
         }
 
         try {
-            String bid = ConfigManager.getRequired("ios.bundleId");
             InteractsWithApps app = (InteractsWithApps) driver;
-            app.terminateApp(bid);
-            app.activateApp(bid);
+            app.terminateApp(appId);
+            app.activateApp(appId);
 
             new BaseScr(driver).handleStartupPopups();
-            handleIosLaunchBannerIfPresent();
+            handleLaunchBannerIfPresent();
 
             WebDriverWait afterRelaunch = new WebDriverWait(driver, Duration.ofSeconds(35));
             afterRelaunch.until(d -> !d.findElements(trangChu).isEmpty() || !d.findElements(toi).isEmpty());
-            waitIosTabBarSettled();
+            waitMainTabBarSettled();
         } catch (Exception ex) {
             throw new RuntimeException(
-                    "[BaseDriver] iOS: không đưa app về màn có bottom bar (Trang chủ / Tôi): " + ex.getMessage(), ex);
+                    "[BaseDriver] " + platformLabel()
+                            + ": không đưa app về màn có bottom bar (Trang chủ / Tôi): " + ex.getMessage(), ex);
         }
     }
 
-    private void handleIosLaunchBannerIfPresent() {
-        if (!(driver instanceof IOSDriver)) {
-            return;
-        }
-
+    /** Banner khởi động (nút Bỏ qua) — Flutter semantics thường giống trên cả hai nền tảng. */
+    private void handleLaunchBannerIfPresent() {
         By btnBoQua = AppiumBy.accessibilityId("Bỏ qua");
 
         try {
@@ -204,22 +236,23 @@ public class BaseDriver {
                 );
             }
 
-            System.out.println("[BaseDriver] iOS: đã dismiss banner bằng nút 'Bỏ qua'");
+            System.out.println("[BaseDriver] " + platformLabel() + ": đã dismiss banner bằng nút 'Bỏ qua'");
 
             new WebDriverWait(driver, Duration.ofSeconds(8)).until(d ->
                     d.findElements(btnBoQua).isEmpty()
                             || !d.findElements(AppiumBy.accessibilityId("Bài hát")).isEmpty()
                             || !d.findElements(AppiumBy.accessibilityId("Song ca")).isEmpty());
         } catch (Exception e) {
-            System.out.println("[BaseDriver] iOS: xử lý banner 'Bỏ qua' lỗi: " + e.getMessage());
+            System.out.println("[BaseDriver] " + platformLabel() + ": xử lý banner 'Bỏ qua' lỗi: " + e.getMessage());
         }
     }
 
-    private void waitIosTabBarSettled() {
+    private void waitMainTabBarSettled() {
         try {
             new WebDriverWait(driver, Duration.ofSeconds(15)).until(d ->
-                    !d.findElements(AppiumBy.xpath("//*[contains(@name,'Trực tuyến')]")).isEmpty()
-                            || !d.findElements(AppiumBy.accessibilityId("Trực tuyến")).isEmpty());
+                    !d.findElements(AppiumBy.accessibilityId("Trực tuyến")).isEmpty()
+                            || !d.findElements(AppiumBy.xpath("//*[contains(@name,'Trực tuyến')]")).isEmpty()
+                            || !d.findElements(AppiumBy.xpath("//*[contains(@content-desc,'Trực tuyến')]")).isEmpty());
         } catch (TimeoutException ignored) {
         }
     }
