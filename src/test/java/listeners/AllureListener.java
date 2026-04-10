@@ -3,7 +3,6 @@ package listeners;
 import io.qameta.allure.Allure;
 import io.qameta.allure.AllureLifecycle;
 import io.qameta.allure.model.Parameter;
-import io.qameta.allure.model.Status;
 import io.qameta.allure.model.Label;
 import org.testng.ITestContext;
 import org.testng.ITestListener;
@@ -11,6 +10,7 @@ import org.testng.ITestResult;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.net.URI;
 
 public class AllureListener implements ITestListener {
 
@@ -85,9 +85,19 @@ public class AllureListener implements ITestListener {
 
         String appiumServer = firstNonBlank(System.getProperty("appiumServer"), "unknown");
 
+        String jenkinsSlot = firstNonBlank(System.getProperty("jenkins.slot"));
+        String appiumPort = firstNonBlank(
+                System.getProperty("jenkins.appiumPort"),
+                portFromUrl(appiumServer));
+        String androidSystemPort = firstNonBlank(System.getProperty("jenkins.systemPort"));
+        String iosWdaPort = firstNonBlank(System.getProperty("jenkins.wdaLocalPort"));
+        String iosMjpegPort = firstNonBlank(System.getProperty("jenkins.mjpegServerPort"));
+
         String deviceKey = buildDeviceKey(platform, udid);
         String originalTestName = result.getMethod().getMethodName();
-        String displayName = originalTestName + " [" + deviceKey + "]";
+        String portSummary = buildPortSummary(platform, appiumPort, androidSystemPort, iosWdaPort, iosMjpegPort);
+        String displayName = originalTestName + " [" + deviceKey
+                + (portSummary.isEmpty() ? "" : " · " + portSummary) + "]";
 
         AllureLifecycle lifecycle = Allure.getLifecycle();
 
@@ -100,6 +110,27 @@ public class AllureListener implements ITestListener {
                 upsertLabel(testResult, "framework", "testng");
                 upsertLabel(testResult, "host", safe(System.getProperty("user.name")));
 
+                upsertLabel(testResult, "parentSuite", "Yokara · Jenkins parallel");
+                upsertLabel(testResult, "suite", deviceKey);
+                upsertLabel(testResult, "subSuite", buildSubSuite(jenkinsSlot, appiumPort, platform,
+                        androidSystemPort, iosWdaPort, iosMjpegPort));
+
+                if (jenkinsSlot != null && !jenkinsSlot.isBlank()) {
+                    upsertLabel(testResult, "jenkinsSlot", jenkinsSlot);
+                }
+                if (appiumPort != null && !appiumPort.isBlank()) {
+                    upsertLabel(testResult, "appiumPort", appiumPort);
+                }
+                if (androidSystemPort != null && !androidSystemPort.isBlank()) {
+                    upsertLabel(testResult, "androidSystemPort", androidSystemPort);
+                }
+                if (iosWdaPort != null && !iosWdaPort.isBlank()) {
+                    upsertLabel(testResult, "wdaLocalPort", iosWdaPort);
+                }
+                if (iosMjpegPort != null && !iosMjpegPort.isBlank()) {
+                    upsertLabel(testResult, "mjpegServerPort", iosMjpegPort);
+                }
+
                 upsertParameter(testResult, "platform", platform);
                 upsertParameter(testResult, "device", deviceKey);
 
@@ -108,6 +139,21 @@ public class AllureListener implements ITestListener {
                 }
                 if (appiumServer != null && !appiumServer.isBlank()) {
                     upsertParameter(testResult, "appiumServer", appiumServer);
+                }
+                if (jenkinsSlot != null && !jenkinsSlot.isBlank()) {
+                    upsertParameter(testResult, "jenkins.slot", jenkinsSlot);
+                }
+                if (appiumPort != null && !appiumPort.isBlank()) {
+                    upsertParameter(testResult, "appium.port", appiumPort);
+                }
+                if (androidSystemPort != null && !androidSystemPort.isBlank()) {
+                    upsertParameter(testResult, "android.systemPort", androidSystemPort);
+                }
+                if (iosWdaPort != null && !iosWdaPort.isBlank()) {
+                    upsertParameter(testResult, "ios.wdaLocalPort", iosWdaPort);
+                }
+                if (iosMjpegPort != null && !iosMjpegPort.isBlank()) {
+                    upsertParameter(testResult, "ios.mjpegServerPort", iosMjpegPort);
                 }
             });
 
@@ -118,6 +164,21 @@ public class AllureListener implements ITestListener {
             }
             if (appiumServer != null && !appiumServer.isBlank()) {
                 Allure.parameter("appiumServer", appiumServer);
+            }
+            if (jenkinsSlot != null && !jenkinsSlot.isBlank()) {
+                Allure.parameter("jenkins.slot", jenkinsSlot);
+            }
+            if (appiumPort != null && !appiumPort.isBlank()) {
+                Allure.parameter("appium.port", appiumPort);
+            }
+            if (androidSystemPort != null && !androidSystemPort.isBlank()) {
+                Allure.parameter("android.systemPort", androidSystemPort);
+            }
+            if (iosWdaPort != null && !iosWdaPort.isBlank()) {
+                Allure.parameter("ios.wdaLocalPort", iosWdaPort);
+            }
+            if (iosMjpegPort != null && !iosMjpegPort.isBlank()) {
+                Allure.parameter("ios.mjpegServerPort", iosMjpegPort);
             }
 
             METADATA_ATTACHED.set(true);
@@ -175,6 +236,75 @@ public class AllureListener implements ITestListener {
 
         String shortUdid = udid.length() > 8 ? udid.substring(udid.length() - 8) : udid;
         return platform + "-" + shortUdid;
+    }
+
+    private static String portFromUrl(String url) {
+        if (url == null || url.isBlank() || "unknown".equalsIgnoreCase(url.trim())) {
+            return null;
+        }
+        try {
+            URI u = URI.create(url.trim());
+            int p = u.getPort();
+            return p > 0 ? String.valueOf(p) : null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static String buildSubSuite(String jenkinsSlot, String appiumPort, String platform,
+            String androidSystemPort, String iosWdaPort, String iosMjpegPort) {
+        StringBuilder sb = new StringBuilder();
+        if (jenkinsSlot != null && !jenkinsSlot.isBlank()) {
+            sb.append("slot=").append(jenkinsSlot);
+        }
+        if (appiumPort != null && !appiumPort.isBlank()) {
+            if (sb.length() > 0) {
+                sb.append(" · ");
+            }
+            sb.append("appium=").append(appiumPort);
+        }
+        if ("android".equals(platform) && androidSystemPort != null && !androidSystemPort.isBlank()) {
+            sb.append(" · UIA2 systemPort=").append(androidSystemPort);
+        }
+        if ("ios".equals(platform)) {
+            if (iosWdaPort != null && !iosWdaPort.isBlank()) {
+                sb.append(" · WDA=").append(iosWdaPort);
+            }
+            if (iosMjpegPort != null && !iosMjpegPort.isBlank()) {
+                sb.append(" · MJPEG=").append(iosMjpegPort);
+            }
+        }
+        String s = sb.toString();
+        return s.isBlank() ? "default" : s;
+    }
+
+    private static String buildPortSummary(String platform, String appiumPort,
+            String androidSystemPort, String iosWdaPort, String iosMjpegPort) {
+        StringBuilder sb = new StringBuilder();
+        if (appiumPort != null && !appiumPort.isBlank()) {
+            sb.append("A:").append(appiumPort);
+        }
+        if ("android".equals(platform) && androidSystemPort != null && !androidSystemPort.isBlank()) {
+            if (sb.length() > 0) {
+                sb.append(" ");
+            }
+            sb.append("S:").append(androidSystemPort);
+        }
+        if ("ios".equals(platform)) {
+            if (iosWdaPort != null && !iosWdaPort.isBlank()) {
+                if (sb.length() > 0) {
+                    sb.append(" ");
+                }
+                sb.append("W:").append(iosWdaPort);
+            }
+            if (iosMjpegPort != null && !iosMjpegPort.isBlank()) {
+                if (sb.length() > 0) {
+                    sb.append(" ");
+                }
+                sb.append("M:").append(iosMjpegPort);
+            }
+        }
+        return sb.toString();
     }
 
     private String firstNonBlank(String... values) {

@@ -337,6 +337,10 @@ pipeline {
                                                                   -Dios.wdaLocalPort.base=${d.wdaLocalPort} \\
                                                                   -Dios.mjpegServerPort.base=${d.mjpegServerPort} \\
                                                                   -Dios.derivedDataPath="${d.derivedDataPath}" \\
+                                                                  -Djenkins.slot=${slot} \\
+                                                                  -Djenkins.appiumPort=${appiumPort} \\
+                                                                  -Djenkins.wdaLocalPort=${d.wdaLocalPort} \\
+                                                                  -Djenkins.mjpegServerPort=${d.mjpegServerPort} \\
                                                                   -Dallure.results.directory=target/allure-results-${udid}
                                                             """
                                                         } else {
@@ -350,6 +354,9 @@ pipeline {
                                                                   -DappiumServer=${appiumUrl} \\
                                                                   -Dandroid.udid="${udid}" \\
                                                                   -Dandroid.systemPort.base=${d.systemPort} \\
+                                                                  -Djenkins.slot=${slot} \\
+                                                                  -Djenkins.appiumPort=${appiumPort} \\
+                                                                  -Djenkins.systemPort=${d.systemPort} \\
                                                                   -Dallure.results.directory=target/allure-results-${udid}
                                                             """
                                                         }
@@ -477,6 +484,57 @@ pipeline {
                     '''
                     archiveArtifacts artifacts: 'allure-merge/**', allowEmptyArchive: true
                     archiveArtifacts artifacts: 'allure-combined/**', allowEmptyArchive: true
+                }
+            }
+        }
+
+        /*
+         * Sinh HTML Allure riêng cho từng thư mục allure-merge/<platform>-<udid>/ (cùng cổng đã gán trong tên folder).
+         * Bản _MERGED_ALL_DEVICES = cùng nội dung với report plugin Jenkins (allure-combined), tiện tải về / chia sẻ.
+         */
+        stage('Generate Allure HTML by device') {
+            steps {
+                withEnv([
+                    "HOME=${env.USER_HOME}",
+                    "PATH=${env.FULL_PATH}"
+                ]) {
+                    sh '''
+                        set +e
+                        rm -rf allure-reports-by-device
+                        mkdir -p allure-reports-by-device
+
+                        run_allure_generate() {
+                          _in="$1"
+                          _out="$2"
+                          if command -v allure >/dev/null 2>&1; then
+                            allure generate "$_in" -o "$_out" --clean
+                            return $?
+                          fi
+                          if command -v npx >/dev/null 2>&1; then
+                            npx --yes allure-commandline@2.24.1 generate "$_in" -o "$_out" --clean
+                            return $?
+                          fi
+                          echo "[Allure] Cần allure CLI (npm i -g allure-commandline) hoặc npx trên agent."
+                          return 1
+                        }
+
+                        if [ -d allure-merge ]; then
+                          for d in allure-merge/*/; do
+                            [ -d "$d" ] || continue
+                            name=$(basename "$d")
+                            echo "[Allure] HTML riêng cho thư mục kết quả: $name"
+                            run_allure_generate "$d" "allure-reports-by-device/$name" || true
+                          done
+                        fi
+
+                        if [ -d allure-combined ] && [ -n "$(ls -A allure-combined 2>/dev/null)" ]; then
+                          echo "[Allure] HTML MERGED (tất cả thiết bị)"
+                          run_allure_generate allure-combined allure-reports-by-device/_MERGED_ALL_DEVICES || true
+                        fi
+
+                        ls -la allure-reports-by-device 2>/dev/null || true
+                    '''
+                    archiveArtifacts artifacts: 'allure-reports-by-device/**', allowEmptyArchive: true
                 }
             }
         }
