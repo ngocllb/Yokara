@@ -25,7 +25,7 @@ pipeline {
         APPIUM_BIN = '/Users/quhuy/.nvm/versions/node/v22.22.2/bin/appium'
         PYTHON_BIN = '/opt/homebrew/bin/python3'
 
-        // Port strategy: mỗi device chiếm 1 "slot", mỗi slot cách nhau 10
+        // Port strategy: mỗi device 1 slot, cách nhau 10
         APPIUM_BASE_PORT = '4700'
         IOS_WDA_BASE_PORT = '8100'
         IOS_MJPEG_BASE_PORT = '10100'
@@ -128,16 +128,16 @@ pipeline {
 
                         def allDevices = []
 
-                        lines.each { line ->
+                        for (String line : lines) {
                             def parts = line.split('\\|')
                             if (parts.size() < 2) {
-                                return
+                                continue
                             }
 
                             def platform = parts[0].trim().toLowerCase()
                             def udid = parts[1].trim()
 
-                            if (platform in ['ios', 'android']) {
+                            if (platform == 'ios' || platform == 'android') {
                                 allDevices << [platform: platform, udid: udid]
                             }
                         }
@@ -146,10 +146,9 @@ pipeline {
                             error("No supported devices detected.")
                         }
 
-                        // sort ổn định để mỗi lần detect ra thứ tự nhất quán
-                        allDevices = allDevices.sort { a, b ->
-                            a.platform == b.platform ? a.udid <=> b.udid : a.platform <=> b.platform
-                        }
+                        // sort an toàn cho Jenkins CPS
+                        allDevices = allDevices.collect()
+                        allDevices.sort { it.udid }
 
                         def appiumBase = env.APPIUM_BASE_PORT.toInteger()
                         def iosWdaBase = env.IOS_WDA_BASE_PORT.toInteger()
@@ -159,22 +158,23 @@ pipeline {
 
                         def deviceMatrix = []
 
-                        allDevices.eachWithIndex { dev, idx ->
+                        for (int idx = 0; idx < allDevices.size(); idx++) {
+                            def dev = allDevices[idx]
                             def shortUdid = dev.udid.size() > 8 ? dev.udid.substring(dev.udid.size() - 8) : dev.udid
                             def slot = idx
 
                             def item = [
-                                slot        : slot,
-                                platform    : dev.platform,
-                                udid        : dev.udid,
-                                shortUdid   : shortUdid,
-                                appiumPort  : appiumBase + (slot * step)
+                                slot      : slot,
+                                platform  : dev.platform,
+                                udid      : dev.udid,
+                                shortUdid : shortUdid,
+                                appiumPort: appiumBase + (slot * step)
                             ]
 
                             if (dev.platform == 'ios') {
                                 item.wdaLocalPort = iosWdaBase + (slot * step)
                                 item.mjpegServerPort = iosMjpegBase + (slot * step)
-                                item.derivedDataPath = "/tmp/wda-${shortUdid}-${env.BUILD_TAG}".replaceAll('[^A-Za-z0-9._\\-/]', '_')
+                                item.derivedDataPath = "/tmp/wda-${shortUdid}-${env.BUILD_NUMBER}"
                             } else {
                                 item.systemPort = androidSystemBase + (slot * step)
                             }
@@ -183,8 +183,8 @@ pipeline {
                         }
 
                         echo "===== DEVICE MATRIX ====="
-                        deviceMatrix.each { d ->
-                            echo d.toString()
+                        for (def d in deviceMatrix) {
+                            echo "${d}"
                         }
 
                         writeJSON file: 'device-dashboard/device-matrix.json', json: deviceMatrix, pretty: 4
@@ -207,7 +207,8 @@ pipeline {
                         def deviceMatrix = readJSON file: 'device-dashboard/device-matrix.json'
                         def branches = [:]
 
-                        deviceMatrix.each { d ->
+                        for (int i = 0; i < deviceMatrix.size(); i++) {
+                            def d = deviceMatrix[i]
                             def platform = d.platform
                             def udid = d.udid
                             def shortUdid = d.shortUdid
@@ -220,183 +221,210 @@ pipeline {
                             def dashboardDir = "${env.WORKSPACE}/device-dashboard/${branchName}"
 
                             branches["${platform.toUpperCase()}-${shortUdid}"] = {
-                                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                                    ws(branchWs) {
-                                        withEnv([
-                                            "HOME=${env.USER_HOME}",
-                                            "PATH=${env.FULL_PATH}",
-                                            "ANDROID_HOME=${env.ANDROID_HOME}",
-                                            "ANDROID_SDK_ROOT=${env.ANDROID_SDK_ROOT}"
-                                        ]) {
-                                            deleteDir()
-                                            unstash 'repo-source'
+                                timeout(time: 30, unit: 'MINUTES') {
+                                    retry(2) {
+                                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                                            ws(branchWs) {
+                                                withEnv([
+                                                    "HOME=${env.USER_HOME}",
+                                                    "PATH=${env.FULL_PATH}",
+                                                    "ANDROID_HOME=${env.ANDROID_HOME}",
+                                                    "ANDROID_SDK_ROOT=${env.ANDROID_SDK_ROOT}"
+                                                ]) {
+                                                    deleteDir()
+                                                    unstash 'repo-source'
 
-                                            def appiumPid = ''
-                                            def resultStatus = 'UNKNOWN'
+                                                    def appiumPid = ''
+                                                    def resultStatus = 'UNKNOWN'
+                                                    def startTs = System.currentTimeMillis()
 
-                                            try {
-                                                sh """
-                                                    set +e
-                                                    mkdir -p target/allure-results-${udid}
-                                                    mkdir -p artifacts
-                                                    echo "===== BRANCH INFO ====="
-                                                    echo "Platform=${platform}"
-                                                    echo "UDID=${udid}"
-                                                    echo "ShortUDID=${shortUdid}"
-                                                    echo "Slot=${slot}"
-                                                    echo "Workspace=\$(pwd)"
-                                                    echo "AppiumUrl=${appiumUrl}"
-                                                    echo "PATH=\$PATH"
-                                                    echo "ANDROID_HOME=\$ANDROID_HOME"
-                                                    echo "ANDROID_SDK_ROOT=\$ANDROID_SDK_ROOT"
-                                                """
+                                                    try {
+                                                        sh """
+                                                            set +e
+                                                            mkdir -p target/allure-results-${udid}
+                                                            mkdir -p artifacts
+                                                            echo "===== BRANCH INFO ====="
+                                                            echo "Platform=${platform}"
+                                                            echo "UDID=${udid}"
+                                                            echo "ShortUDID=${shortUdid}"
+                                                            echo "Slot=${slot}"
+                                                            echo "Workspace=\$(pwd)"
+                                                            echo "AppiumUrl=${appiumUrl}"
+                                                            echo "PATH=\$PATH"
+                                                            echo "ANDROID_HOME=\$ANDROID_HOME"
+                                                            echo "ANDROID_SDK_ROOT=\$ANDROID_SDK_ROOT"
+                                                        """
 
-                                                if (platform == 'ios') {
-                                                    sh """
-                                                        set +e
-                                                        lsof -ti tcp:${appiumPort} | xargs kill -9 2>/dev/null || true
-                                                        lsof -ti tcp:${d.wdaLocalPort} | xargs kill -9 2>/dev/null || true
-                                                        lsof -ti tcp:${d.mjpegServerPort} | xargs kill -9 2>/dev/null || true
-                                                        rm -rf "${d.derivedDataPath}" || true
-                                                        mkdir -p "${d.derivedDataPath}"
-                                                    """
-                                                } else {
-                                                    sh """
-                                                        set +e
-                                                        lsof -ti tcp:${appiumPort} | xargs kill -9 2>/dev/null || true
-                                                        lsof -ti tcp:${d.systemPort} | xargs kill -9 2>/dev/null || true
-                                                        adb -s "${udid}" get-state || true
-                                                    """
+                                                        if (platform == 'ios') {
+                                                            def iosAlive = sh(
+                                                                script: "${env.IDEVICE_ID_BIN} -l | grep '${udid}' || true",
+                                                                returnStdout: true
+                                                            ).trim()
+                                                            if (!iosAlive) {
+                                                                error("iOS device ${udid} is not connected.")
+                                                            }
+
+                                                            sh """
+                                                                set +e
+                                                                lsof -ti tcp:${appiumPort} | xargs kill -9 2>/dev/null || true
+                                                                lsof -ti tcp:${d.wdaLocalPort} | xargs kill -9 2>/dev/null || true
+                                                                lsof -ti tcp:${d.mjpegServerPort} | xargs kill -9 2>/dev/null || true
+                                                                rm -rf "${d.derivedDataPath}" || true
+                                                                mkdir -p "${d.derivedDataPath}"
+                                                            """
+                                                        } else {
+                                                            def androidAlive = sh(
+                                                                script: "adb -s '${udid}' get-state 2>/dev/null || true",
+                                                                returnStdout: true
+                                                            ).trim()
+                                                            if (androidAlive != 'device') {
+                                                                error("Android device ${udid} is not ready. State=${androidAlive}")
+                                                            }
+
+                                                            sh """
+                                                                set +e
+                                                                lsof -ti tcp:${appiumPort} | xargs kill -9 2>/dev/null || true
+                                                                lsof -ti tcp:${d.systemPort} | xargs kill -9 2>/dev/null || true
+                                                            """
+                                                        }
+
+                                                        sh """
+                                                            set -e
+                                                            echo "===== START APPIUM ====="
+                                                            nohup env \\
+                                                              HOME="${env.USER_HOME}" \\
+                                                              PATH="${env.FULL_PATH}" \\
+                                                              ANDROID_HOME="${env.ANDROID_HOME}" \\
+                                                              ANDROID_SDK_ROOT="${env.ANDROID_SDK_ROOT}" \\
+                                                              ${env.APPIUM_BIN} server \\
+                                                              --address 127.0.0.1 \\
+                                                              --port ${appiumPort} \\
+                                                              --log-level info \\
+                                                              > appium-${platform}-${shortUdid}.log 2>&1 &
+                                                            echo \$! > appium-${platform}-${shortUdid}.pid
+                                                        """
+
+                                                        appiumPid = sh(
+                                                            script: "cat appium-${platform}-${shortUdid}.pid",
+                                                            returnStdout: true
+                                                        ).trim()
+
+                                                        sh """
+                                                            set -e
+                                                            echo "Waiting Appium status on ${appiumUrl}/status"
+                                                            for i in \$(seq 1 40); do
+                                                              if curl -sf ${appiumUrl}/status >/dev/null 2>&1; then
+                                                                echo "Appium is ready on ${appiumUrl}"
+                                                                exit 0
+                                                              fi
+                                                              sleep 1
+                                                            done
+                                                            echo "Appium did not become ready in time"
+                                                            cat appium-${platform}-${shortUdid}.log || true
+                                                            exit 1
+                                                        """
+
+                                                        if (platform == 'ios') {
+                                                            sh """
+                                                                set -e
+                                                                ${env.IDEVICE_ID_BIN} -l || true
+
+                                                                mvn clean test \\
+                                                                  -DsuiteXmlFile=testng-jenkins.xml \\
+                                                                  -Dplatform=ios \\
+                                                                  -DappiumServer=${appiumUrl} \\
+                                                                  -Dios.udid="${udid}" \\
+                                                                  -Dios.wdaLocalPort.base=${d.wdaLocalPort} \\
+                                                                  -Dios.mjpegServerPort.base=${d.mjpegServerPort} \\
+                                                                  -Dios.derivedDataPath="${d.derivedDataPath}" \\
+                                                                  -Dallure.results.directory=target/allure-results-${udid}
+                                                            """
+                                                        } else {
+                                                            sh """
+                                                                set -e
+                                                                adb devices || true
+
+                                                                mvn clean test \\
+                                                                  -DsuiteXmlFile=testng-jenkins.xml \\
+                                                                  -Dplatform=android \\
+                                                                  -DappiumServer=${appiumUrl} \\
+                                                                  -Dandroid.udid="${udid}" \\
+                                                                  -Dandroid.systemPort.base=${d.systemPort} \\
+                                                                  -Dallure.results.directory=target/allure-results-${udid}
+                                                            """
+                                                        }
+
+                                                        resultStatus = 'PASSED'
+                                                    } catch (err) {
+                                                        resultStatus = 'FAILED'
+                                                        throw err
+                                                    } finally {
+                                                        def durationSec = ((System.currentTimeMillis() - startTs) / 1000L) as Long
+
+                                                        sh """
+                                                            set +e
+
+                                                            if [ -n "${appiumPid}" ]; then
+                                                              kill ${appiumPid} || true
+                                                            fi
+
+                                                            if [ -f appium-${platform}-${shortUdid}.pid ]; then
+                                                              kill \$(cat appium-${platform}-${shortUdid}.pid) || true
+                                                            fi
+
+                                                            lsof -ti tcp:${appiumPort} | xargs kill -9 2>/dev/null || true
+                                                        """
+
+                                                        if (platform == 'ios') {
+                                                            sh """
+                                                                set +e
+                                                                lsof -ti tcp:${d.wdaLocalPort} | xargs kill -9 2>/dev/null || true
+                                                                lsof -ti tcp:${d.mjpegServerPort} | xargs kill -9 2>/dev/null || true
+                                                                rm -rf "${d.derivedDataPath}" || true
+                                                            """
+                                                        } else {
+                                                            sh """
+                                                                set +e
+                                                                lsof -ti tcp:${d.systemPort} | xargs kill -9 2>/dev/null || true
+                                                            """
+                                                        }
+
+                                                        sh """
+                                                            set +e
+                                                            mkdir -p target/allure-results-${udid}
+                                                            {
+                                                              echo "Platform=${platform}"
+                                                              echo "DeviceUDID=${udid}"
+                                                              echo "Slot=${slot}"
+                                                              echo "AppiumServer=${appiumUrl}"
+                                                              echo "AppiumPort=${appiumPort}"
+                                                              echo "Result=${resultStatus}"
+                                                              echo "DurationSec=${durationSec}"
+                                                            } > target/allure-results-${udid}/environment.properties
+
+                                                            mkdir -p "${mergeDir}"
+                                                            if [ -d "target/allure-results-${udid}" ]; then
+                                                              cp -R "target/allure-results-${udid}/." "${mergeDir}/" || true
+                                                            fi
+
+                                                            mkdir -p "${dashboardDir}"
+                                                        """
+
+                                                        writeJSON(
+                                                            file: "${dashboardDir}/summary.json",
+                                                            json: d + [status: resultStatus, durationSec: durationSec],
+                                                            pretty: 4
+                                                        )
+
+                                                        sh """
+                                                            set +e
+                                                            cp -f appium-${platform}-${shortUdid}.log artifacts/ || true
+                                                            cp -R target/surefire-reports artifacts/surefire-reports || true
+                                                        """
+
+                                                        archiveArtifacts artifacts: 'artifacts/**', allowEmptyArchive: true
+                                                    }
                                                 }
-
-                                                sh """
-                                                    set -e
-                                                    echo "===== START APPIUM ====="
-                                                    nohup env \
-                                                      HOME="${env.USER_HOME}" \
-                                                      PATH="${env.FULL_PATH}" \
-                                                      ANDROID_HOME="${env.ANDROID_HOME}" \
-                                                      ANDROID_SDK_ROOT="${env.ANDROID_SDK_ROOT}" \
-                                                      ${env.APPIUM_BIN} server \
-                                                      --address 127.0.0.1 \
-                                                      --port ${appiumPort} \
-                                                      --log-level info \
-                                                      > appium-${platform}-${shortUdid}.log 2>&1 &
-                                                    echo \$! > appium-${platform}-${shortUdid}.pid
-                                                """
-
-                                                appiumPid = sh(
-                                                    script: "cat appium-${platform}-${shortUdid}.pid",
-                                                    returnStdout: true
-                                                ).trim()
-
-                                                sh """
-                                                    set -e
-                                                    echo "Waiting Appium status on ${appiumUrl}/status"
-                                                    for i in \$(seq 1 40); do
-                                                      if curl -sf ${appiumUrl}/status >/dev/null 2>&1; then
-                                                        echo "Appium is ready on ${appiumUrl}"
-                                                        exit 0
-                                                      fi
-                                                      sleep 1
-                                                    done
-                                                    echo "Appium did not become ready in time"
-                                                    cat appium-${platform}-${shortUdid}.log || true
-                                                    exit 1
-                                                """
-
-                                                if (platform == 'ios') {
-                                                    sh """
-                                                        set -e
-                                                        ${env.IDEVICE_ID_BIN} -l || true
-
-                                                        mvn clean test \
-                                                          -DsuiteXmlFile=testng-jenkins.xml \
-                                                          -Dplatform=ios \
-                                                          -DappiumServer=${appiumUrl} \
-                                                          -Dios.udid="${udid}" \
-                                                          -Dios.wdaLocalPort.base=${d.wdaLocalPort} \
-                                                          -Dios.mjpegServerPort.base=${d.mjpegServerPort} \
-                                                          -Dios.derivedDataPath="${d.derivedDataPath}" \
-                                                          -Dallure.results.directory=target/allure-results-${udid}
-                                                    """
-                                                } else {
-                                                    sh """
-                                                        set -e
-                                                        adb devices || true
-
-                                                        mvn clean test \
-                                                          -DsuiteXmlFile=testng-jenkins.xml \
-                                                          -Dplatform=android \
-                                                          -DappiumServer=${appiumUrl} \
-                                                          -Dandroid.udid="${udid}" \
-                                                          -Dandroid.systemPort.base=${d.systemPort} \
-                                                          -Dallure.results.directory=target/allure-results-${udid}
-                                                    """
-                                                }
-
-                                                resultStatus = 'PASSED'
-                                            } catch (err) {
-                                                resultStatus = 'FAILED'
-                                                throw err
-                                            } finally {
-                                                sh """
-                                                    set +e
-
-                                                    if [ -n "${appiumPid}" ]; then
-                                                      kill ${appiumPid} || true
-                                                    fi
-
-                                                    if [ -f appium-${platform}-${shortUdid}.pid ]; then
-                                                      kill \$(cat appium-${platform}-${shortUdid}.pid) || true
-                                                    fi
-
-                                                    lsof -ti tcp:${appiumPort} | xargs kill -9 2>/dev/null || true
-                                                """
-
-                                                if (platform == 'ios') {
-                                                    sh """
-                                                        set +e
-                                                        lsof -ti tcp:${d.wdaLocalPort} | xargs kill -9 2>/dev/null || true
-                                                        lsof -ti tcp:${d.mjpegServerPort} | xargs kill -9 2>/dev/null || true
-                                                        rm -rf "${d.derivedDataPath}" || true
-                                                    """
-                                                } else {
-                                                    sh """
-                                                        set +e
-                                                        lsof -ti tcp:${d.systemPort} | xargs kill -9 2>/dev/null || true
-                                                    """
-                                                }
-
-                                                sh """
-                                                    set +e
-                                                    mkdir -p target/allure-results-${udid}
-                                                    {
-                                                      echo "Platform=${platform}"
-                                                      echo "DeviceUDID=${udid}"
-                                                      echo "Slot=${slot}"
-                                                      echo "AppiumServer=${appiumUrl}"
-                                                      echo "AppiumPort=${appiumPort}"
-                                                      echo "Result=${resultStatus}"
-                                                    } > target/allure-results-${udid}/environment.properties
-
-                                                    mkdir -p "${mergeDir}"
-                                                    if [ -d "target/allure-results-${udid}" ]; then
-                                                      cp -R "target/allure-results-${udid}/." "${mergeDir}/" || true
-                                                    fi
-
-                                                    mkdir -p "${dashboardDir}"
-                                                """
-
-                                                writeJSON file: "${dashboardDir}/summary.json", json: d + [status: resultStatus], pretty: 4
-
-                                                sh """
-                                                    set +e
-                                                    cp -f appium-${platform}-${shortUdid}.log artifacts/ || true
-                                                    cp -R target/surefire-reports artifacts/surefire-reports || true
-                                                """
-
-                                                archiveArtifacts artifacts: 'artifacts/**', allowEmptyArchive: true
                                             }
                                         }
                                     }
@@ -404,7 +432,7 @@ pipeline {
                             }
                         }
 
-                        parallel branches
+                        parallel branches + [failFast: false]
                     }
                 }
             }
@@ -421,7 +449,7 @@ pipeline {
                     script {
                         sh '''
                             mkdir -p device-dashboard
-                            echo "platform,udid,shortUdid,slot,appiumPort,extraPort1,extraPort2,status" > device-dashboard/device-summary.csv
+                            echo "platform,udid,shortUdid,slot,appiumPort,extraPort1,extraPort2,status,durationSec" > device-dashboard/device-summary.csv
                         '''
 
                         def jsonFiles = sh(
@@ -430,12 +458,12 @@ pipeline {
                         ).trim()
 
                         if (jsonFiles) {
-                            jsonFiles.split('\n').findAll { it?.trim() }.each { file ->
+                            for (String file in jsonFiles.split('\n').findAll { it?.trim() }) {
                                 def item = readJSON file: file.trim()
                                 def extraPort1 = item.platform == 'ios' ? item.wdaLocalPort : item.systemPort
                                 def extraPort2 = item.platform == 'ios' ? item.mjpegServerPort : ''
                                 sh """
-                                    echo "${item.platform},${item.udid},${item.shortUdid},${item.slot},${item.appiumPort},${extraPort1},${extraPort2},${item.status}" >> device-dashboard/device-summary.csv
+                                    echo "${item.platform},${item.udid},${item.shortUdid},${item.slot},${item.appiumPort},${extraPort1},${extraPort2},${item.status},${item.durationSec}" >> device-dashboard/device-summary.csv
                                 """
                             }
                         }
@@ -476,6 +504,9 @@ pipeline {
                         for p in $(seq 8200 10 8400); do
                           lsof -ti tcp:$p | xargs kill -9 2>/dev/null || true
                         done
+
+                        pkill -f appium || true
+                        pkill -f WebDriverAgent || true
 
                         mkdir -p allure-merge
                         find allure-merge -type f | head || true
