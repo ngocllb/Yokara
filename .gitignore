@@ -1,8 +1,5 @@
+# Maven build output
 target/
-!.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
-.kotlin
 
 ### IntelliJ IDEA ###
 .idea/modules.xml
@@ -13,25 +10,6 @@ target/
 *.iml
 *.ipr
 
-### Eclipse ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
-
 ### VS Code ###
 .vscode/
 
@@ -41,16 +19,24 @@ build/
 ### Xcode ###
 **/xcuserdata/
 
-### Allure (kết quả test sinh ra khi chạy) ###
+### Allure & Jenkins local artifacts (sinh khi chạy test / pipeline) ###
 allure-results/
 allure-report/
 allure-results-by-device/
+allure-merge/
+allure-combined/
+allure-reports-by-device/
+device-dashboard/
 
 ### Secrets / test data cá nhân ###
 **/src/test/resources/testdata.local.properties
 
-### Temporary Logs & Dumps ###
-*.txt
+### Logs & ad-hoc dumps ###
 *.log
 *.bundle
 room_actual_dump.xml
+
+### Python (script hỗ trợ / venv local) ###
+.venv/
+__pycache__/
+*.pyc
