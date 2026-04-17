@@ -1,5 +1,7 @@
 package listeners;
 
+import base.BaseDriver;
+import io.appium.java_client.AppiumDriver;
 import io.qameta.allure.Allure;
 import io.qameta.allure.AllureLifecycle;
 import io.qameta.allure.model.Parameter;
@@ -40,6 +42,7 @@ public class AllureListener implements ITestListener {
     @Override
     public void onTestFailure(ITestResult result) {
         attachExecutionMetadata(result);
+        attachFailureArtifacts();
 
         Throwable throwable = result.getThrowable();
         if (throwable != null) {
@@ -51,6 +54,7 @@ public class AllureListener implements ITestListener {
     @Override
     public void onTestSkipped(ITestResult result) {
         attachExecutionMetadata(result);
+        attachFailureArtifacts();
 
         Throwable throwable = result.getThrowable();
         if (throwable != null) {
@@ -321,5 +325,21 @@ public class AllureListener implements ITestListener {
         throwable.printStackTrace(pw);
         pw.flush();
         return sw.toString();
+    }
+
+    private void attachFailureArtifacts() {
+        try {
+            AppiumDriver driver = BaseDriver.getDriver();
+            if (driver == null) {
+                return;
+            }
+
+            byte[] screenshot = driver.getScreenshotAs(org.openqa.selenium.OutputType.BYTES);
+            Allure.addAttachment("Failure Screenshot", "image/png",
+                    new java.io.ByteArrayInputStream(screenshot), ".png");
+            Allure.addAttachment("Failure Page Source", driver.getPageSource());
+        } catch (Exception ignored) {
+            // Có case fail rất sớm chưa có session/driver -> bỏ qua an toàn.
+        }
     }
 }

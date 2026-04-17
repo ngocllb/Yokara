@@ -242,6 +242,7 @@ pipeline {
 
                                                 def appiumPid = ''
                                                 def resultStatus = 'UNKNOWN'
+                                                def failureMessage = ''
                                                 def startTs = System.currentTimeMillis()
 
                                                 try {
@@ -364,6 +365,7 @@ pipeline {
                                                     resultStatus = 'PASSED'
                                                 } catch (err) {
                                                     resultStatus = 'FAILED'
+                                                    failureMessage = err?.getMessage() ?: err?.toString() ?: 'Unknown error'
                                                     throw err
                                                 } finally {
                                                     def durationSec = ((System.currentTimeMillis() - startTs) / 1000L) as Long
@@ -423,7 +425,11 @@ EOF
 
                                                     writeJSON(
                                                         file: "${dashboardDir}/summary.json",
-                                                        json: device + [status: resultStatus, durationSec: durationSec],
+                                                        json: device + [
+                                                            status      : resultStatus,
+                                                            durationSec : durationSec,
+                                                            errorMessage: failureMessage
+                                                        ],
                                                         pretty: 4
                                                     )
                                                 }
@@ -446,48 +452,6 @@ EOF
             }
         }
 
-        stage('Generate Per-device Reports') {
-            steps {
-                withEnv([
-                    "HOME=${env.USER_HOME}",
-                    "PATH=${env.FULL_PATH}",
-                    "ANDROID_HOME=${env.ANDROID_HOME}",
-                    "ANDROID_SDK_ROOT=${env.ANDROID_SDK_ROOT}"
-                ]) {
-                    script {
-                        unstash 'device-matrix'
-                        def deviceMatrix = readJSON file: 'run-meta/device-matrix.json'
-
-                        deviceMatrix.each { d ->
-                            def branchName = d.branchName
-
-                            sh """
-                                set +e
-                                mkdir -p "reports/device/${branchName}"
-
-                                if [ -d "allure-merge/${branchName}" ] && [ "\$(find "allure-merge/${branchName}" -type f | wc -l | tr -d ' ')" != "0" ]; then
-                                  ${env.ALLURE_BIN} generate "allure-merge/${branchName}" --clean -o "reports/device/${branchName}" || true
-                                else
-                                  cat > "reports/device/${branchName}/index.html" <<EOF
-<!doctype html>
-<html>
-<head><meta charset="utf-8"><title>${branchName}</title></head>
-<body>
-<h2>No Allure results for ${branchName}</h2>
-<p>Branch may have failed before producing test result files.</p>
-</body>
-</html>
-EOF
-                                fi
-                            """
-                        }
-
-                        archiveArtifacts artifacts: 'reports/device/**', allowEmptyArchive: true
-                    }
-                }
-            }
-        }
-
         stage('Create Device Summary Results') {
             steps {
                 withEnv([
@@ -504,11 +468,13 @@ EOF
                             def summaryFile = "device-dashboard/${d.branchName}/summary.json"
                             def status = 'FAILED'
                             def durationSec = 0
+                            def errorMessage = ''
 
                             if (fileExists(summaryFile)) {
                                 def item = readJSON file: summaryFile
                                 status = item?.status == 'PASSED' ? 'PASSED' : 'FAILED'
                                 durationSec = item?.durationSec ?: 0
+                                errorMessage = item?.errorMessage ?: ''
                             }
 
                             def uuid = java.util.UUID.randomUUID().toString()
@@ -533,6 +499,9 @@ EOF
                             def message = fileExists(summaryFile)
                                 ? "status=${status}, durationSec=${durationSec}, branch=${d.branchName}"
                                 : "status=FAILED, reason=no summary.json (failed before test result), branch=${d.branchName}"
+                            if (errorMessage?.trim()) {
+                                message = "${message}, reason=${errorMessage}"
+                            }
 
                             def result = [
                                 uuid         : uuid,
@@ -546,13 +515,57 @@ EOF
                                     known  : true,
                                     muted  : false,
                                     flaky  : false,
-                                    message: message
+                                    message: message,
+                                    trace  : errorMessage ?: ''
                                 ]
                             ]
 
                             sh "mkdir -p \"allure-merge/${d.branchName}\""
                             writeJSON file: "allure-merge/${d.branchName}/${uuid}-result.json", json: result, pretty: 4
                         }
+                    }
+                }
+            }
+        }
+
+        stage('Generate Per-device Reports') {
+            steps {
+                withEnv([
+                    "HOME=${env.USER_HOME}",
+                    "PATH=${env.FULL_PATH}",
+                    "ANDROID_HOME=${env.ANDROID_HOME}",
+                    "ANDROID_SDK_ROOT=${env.ANDROID_SDK_ROOT}"
+                ]) {
+                    script {
+                        unstash 'device-matrix'
+                        def deviceMatrix = readJSON file: 'run-meta/device-matrix.json'
+
+                        deviceMatrix.each { d ->
+                            def branchName = d.branchName
+
+                            sh """
+                                set +e
+                                mkdir -p "reports/device/${branchName}"
+
+                                result_count=\$(find "allure-merge/${branchName}" -type f -name '*-result.json' 2>/dev/null | wc -l | tr -d ' ')
+                                if [ "\${result_count}" != "0" ]; then
+                                  ${env.ALLURE_BIN} generate "allure-merge/${branchName}" --clean -o "reports/device/${branchName}" || true
+                                else
+                                  cat > "reports/device/${branchName}/index.html" <<EOF
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>${branchName}</title></head>
+<body>
+<h2>No Allure result json for ${branchName}</h2>
+<p>Branch may have failed before producing test result files.</p>
+</body>
+</html>
+EOF
+                                fi
+                            """
+                        }
+
+                        archiveArtifacts artifacts: 'reports/device/**', allowEmptyArchive: true
                     }
                 }
             }
@@ -578,13 +591,11 @@ EOF
 
                         echo "===== MERGE ALLURE RESULTS (FIXED) ====="
 
-                        # Không copy environment.properties từ từng device để tránh combined report bị iOS chiếm metadata
+                        # Giữ nguyên tên file result/attachment để source trong *-result.json
+                        # vẫn map đúng sang file screenshot attachment.
                         find allure-merge -type f ! -name 'environment.properties' 2>/dev/null | while IFS= read -r f; do
                           [ -f "$f" ] || continue
-                          base=$(basename "$f")
-                          parent=$(basename "$(dirname "$f")")
-                          dest="allure-combined/${parent}__${base}"
-                          cp -f "$f" "$dest" || true
+                          cp -f "$f" allure-combined/ || true
                         done
 
                         total_devices=$(find allure-merge -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')
