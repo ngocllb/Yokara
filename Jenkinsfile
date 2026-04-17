@@ -502,7 +502,7 @@ EOF
     }
 }
 
-def commonEnv() {
+def commonEnv = { ->
     return [
         "HOME=${env.USER_HOME}",
         "PATH=${env.FULL_PATH}",
@@ -511,7 +511,7 @@ def commonEnv() {
     ]
 }
 
-def runDeviceBranch(Map d) {
+def runDeviceBranch = { Map d ->
     def platform = d.platform
     def udid = d.udid
     def shortUdid = d.shortUdid
