@@ -110,10 +110,29 @@ public class AllureListener implements ITestListener {
                 upsertLabel(testResult, "framework", "testng");
                 upsertLabel(testResult, "host", safe(System.getProperty("user.name")));
 
-                upsertLabel(testResult, "parentSuite", "Yokara · Jenkins parallel");
-                upsertLabel(testResult, "suite", deviceKey);
-                upsertLabel(testResult, "subSuite", buildSubSuite(jenkinsSlot, appiumPort, platform,
-                        androidSystemPort, iosWdaPort, iosMjpegPort));
+                String branchName = firstNonBlank(System.getProperty("jenkins.branchName"), deviceKey);
+                upsertLabel(testResult, "parentSuite", "Devices");
+                upsertLabel(testResult, "suite", branchName);
+                upsertLabel(testResult, "subSuite", "Appium Port " + firstNonBlank(appiumPort, "unknown"));
+                upsertLabel(testResult, "device.branch", branchName);
+                upsertLabel(testResult, "device.platform", platform);
+                if (udid != null && !udid.isBlank()) {
+                    upsertLabel(testResult, "device.udid", udid);
+                }
+                if (appiumPort != null && !appiumPort.isBlank()) {
+                    upsertLabel(testResult, "device.appiumPort", appiumPort);
+                }
+                if ("android".equals(platform) && androidSystemPort != null && !androidSystemPort.isBlank()) {
+                    upsertLabel(testResult, "device.extraPort1", androidSystemPort);
+                }
+                if ("ios".equals(platform)) {
+                    if (iosWdaPort != null && !iosWdaPort.isBlank()) {
+                        upsertLabel(testResult, "device.extraPort1", iosWdaPort);
+                    }
+                    if (iosMjpegPort != null && !iosMjpegPort.isBlank()) {
+                        upsertLabel(testResult, "device.extraPort2", iosMjpegPort);
+                    }
+                }
 
                 if (jenkinsSlot != null && !jenkinsSlot.isBlank()) {
                     upsertLabel(testResult, "jenkinsSlot", jenkinsSlot);
@@ -249,33 +268,6 @@ public class AllureListener implements ITestListener {
         } catch (Exception e) {
             return null;
         }
-    }
-
-    private static String buildSubSuite(String jenkinsSlot, String appiumPort, String platform,
-            String androidSystemPort, String iosWdaPort, String iosMjpegPort) {
-        StringBuilder sb = new StringBuilder();
-        if (jenkinsSlot != null && !jenkinsSlot.isBlank()) {
-            sb.append("slot=").append(jenkinsSlot);
-        }
-        if (appiumPort != null && !appiumPort.isBlank()) {
-            if (sb.length() > 0) {
-                sb.append(" · ");
-            }
-            sb.append("appium=").append(appiumPort);
-        }
-        if ("android".equals(platform) && androidSystemPort != null && !androidSystemPort.isBlank()) {
-            sb.append(" · UIA2 systemPort=").append(androidSystemPort);
-        }
-        if ("ios".equals(platform)) {
-            if (iosWdaPort != null && !iosWdaPort.isBlank()) {
-                sb.append(" · WDA=").append(iosWdaPort);
-            }
-            if (iosMjpegPort != null && !iosMjpegPort.isBlank()) {
-                sb.append(" · MJPEG=").append(iosMjpegPort);
-            }
-        }
-        String s = sb.toString();
-        return s.isBlank() ? "default" : s;
     }
 
     private static String buildPortSummary(String platform, String appiumPort,

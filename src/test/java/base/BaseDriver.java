@@ -17,8 +17,10 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Optional;
 import org.testng.annotations.Parameters;
+import utils.AllureDeviceLabels;
 import utils.StepContext;
 
+import java.net.URI;
 import java.time.Duration;
 import java.util.List;
 
@@ -90,6 +92,7 @@ public class BaseDriver {
         try {
             driver = DriverFactory.createDriver(requestedPlatform, requestedUdid);
             DRIVER.set(driver);
+            attachAllureDeviceLabels(requestedPlatform, requestedUdid);
         } catch (RuntimeException e) {
             String msg = e.getMessage() != null ? e.getMessage() : "";
             if (msg.contains("Không tìm thấy thiết bị") || msg.contains("unknown")) {
@@ -255,6 +258,83 @@ public class BaseDriver {
                             || !d.findElements(AppiumBy.xpath("//*[contains(@content-desc,'Trực tuyến')]")).isEmpty());
         } catch (TimeoutException ignored) {
         }
+    }
+
+    private void attachAllureDeviceLabels(String requestedPlatform, String requestedUdid) {
+        try {
+            String platform = normalizePlatform(firstNonBlank(requestedPlatform, System.getProperty("platform")));
+            if (platform == null) {
+                platform = platformLabel();
+            }
+
+            String udid = normalizeRaw(requestedUdid);
+            if (udid == null) {
+                if ("ios".equals(platform)) {
+                    udid = normalizeRaw(System.getProperty("ios.udid"));
+                } else {
+                    udid = normalizeRaw(System.getProperty("android.udid"));
+                }
+            }
+
+            String shortUdid = udid == null ? "unknown" : (udid.length() > 8 ? udid.substring(udid.length() - 8) : udid);
+            String branchName = firstNonBlank(System.getProperty("jenkins.branchName"), platform + "-" + shortUdid);
+            String appiumPort = firstNonBlank(
+                    normalizeRaw(System.getProperty("jenkins.appiumPort")),
+                    parsePortFromUrl(System.getProperty("appiumServer")),
+                    "unknown"
+            );
+
+            if ("ios".equals(platform)) {
+                String wdaLocalPort = firstNonBlank(
+                        normalizeRaw(System.getProperty("jenkins.wdaLocalPort")),
+                        normalizeRaw(System.getProperty("ios.wdaLocalPort")),
+                        ""
+                );
+                String mjpegServerPort = firstNonBlank(
+                        normalizeRaw(System.getProperty("jenkins.mjpegServerPort")),
+                        normalizeRaw(System.getProperty("ios.mjpegServerPort")),
+                        ""
+                );
+                AllureDeviceLabels.attach(branchName, "ios", safe(udid), appiumPort, wdaLocalPort, mjpegServerPort);
+            } else {
+                String systemPort = firstNonBlank(
+                        normalizeRaw(System.getProperty("jenkins.systemPort")),
+                        normalizeRaw(System.getProperty("android.systemPort")),
+                        ""
+                );
+                AllureDeviceLabels.attach(branchName, "android", safe(udid), appiumPort, systemPort, "");
+            }
+        } catch (Exception e) {
+            System.out.println("[BaseDriver] attachAllureDeviceLabels failed: " + e.getMessage());
+        }
+    }
+
+    private String parsePortFromUrl(String appiumServer) {
+        if (appiumServer == null || appiumServer.isBlank()) {
+            return null;
+        }
+        try {
+            URI uri = URI.create(appiumServer.trim());
+            return uri.getPort() > 0 ? String.valueOf(uri.getPort()) : null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private String firstNonBlank(String... values) {
+        if (values == null) {
+            return null;
+        }
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value.trim();
+            }
+        }
+        return null;
+    }
+
+    private String safe(String value) {
+        return value == null ? "unknown" : value;
     }
 
     public static AppiumDriver getDriver() {
