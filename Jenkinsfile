@@ -150,9 +150,6 @@ pipeline {
                             error("No supported devices detected.")
                         }
 
-                        // Không sort để tránh Jenkins sandbox block
-                        allDevices = allDevices
-
                         def appiumBase = env.APPIUM_BASE_PORT.toInteger()
                         def iosWdaBase = env.IOS_WDA_BASE_PORT.toInteger()
                         def iosMjpegBase = env.IOS_MJPEG_BASE_PORT.toInteger()
@@ -214,6 +211,7 @@ pipeline {
                         for (int i = 0; i < deviceMatrix.size(); i++) {
                             def d = deviceMatrix[i]
                             def device = d
+
                             branches["${device.platform.toUpperCase()}-${device.shortUdid}"] = {
                                 timeout(time: 45, unit: 'MINUTES') {
                                     catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
@@ -244,6 +242,7 @@ pipeline {
                                                 def resultStatus = 'UNKNOWN'
                                                 def failureMessage = ''
                                                 def startTs = System.currentTimeMillis()
+                                                def mvnExit = 999
 
                                                 try {
                                                     sh """
@@ -328,47 +327,115 @@ pipeline {
                                                     """
 
                                                     if (platform == 'ios') {
-                                                        sh """
-                                                            set -e
-                                                            mvn clean test \\
-                                                              -DsuiteXmlFile=testng-jenkins.xml \\
-                                                              -Dplatform=ios \\
-                                                              -DappiumServer=${appiumUrl} \\
-                                                              -Djenkins.branchName="${branchName}" \\
-                                                              -Djenkins.slot=${slot} \\
-                                                              -Djenkins.appiumPort=${appiumPort} \\
-                                                              -Djenkins.wdaLocalPort=${device.wdaLocalPort} \\
-                                                              -Djenkins.mjpegServerPort=${device.mjpegServerPort} \\
-                                                              -Dios.udid="${udid}" \\
-                                                              -Dios.wdaLocalPort=${device.wdaLocalPort} \\
-                                                              -Dios.mjpegServerPort=${device.mjpegServerPort} \\
-                                                              -Dios.derivedDataPath="${device.derivedDataPath}" \\
-                                                              -Dallure.results.directory=target/allure-results-${udid}
-                                                        """
+                                                        mvnExit = sh(
+                                                            script: """
+                                                                set +e
+                                                                mvn clean test \\
+                                                                  -DsuiteXmlFile=testng-jenkins.xml \\
+                                                                  -Dplatform=ios \\
+                                                                  -DappiumServer=${appiumUrl} \\
+                                                                  -Djenkins.branchName="${branchName}" \\
+                                                                  -Djenkins.slot=${slot} \\
+                                                                  -Djenkins.appiumPort=${appiumPort} \\
+                                                                  -Djenkins.wdaLocalPort=${device.wdaLocalPort} \\
+                                                                  -Djenkins.mjpegServerPort=${device.mjpegServerPort} \\
+                                                                  -Dios.udid="${udid}" \\
+                                                                  -Dios.wdaLocalPort=${device.wdaLocalPort} \\
+                                                                  -Dios.mjpegServerPort=${device.mjpegServerPort} \\
+                                                                  -Dios.derivedDataPath="${device.derivedDataPath}" \\
+                                                                  -Dallure.results.directory=target/allure-results-${udid}
+                                                                exit \$?
+                                                            """,
+                                                            returnStatus: true
+                                                        )
                                                     } else {
-                                                        sh """
-                                                            set -e
-                                                            mvn clean test \\
-                                                              -DsuiteXmlFile=testng-jenkins.xml \\
-                                                              -Dplatform=android \\
-                                                              -DappiumServer=${appiumUrl} \\
-                                                              -Djenkins.branchName="${branchName}" \\
-                                                              -Djenkins.slot=${slot} \\
-                                                              -Djenkins.appiumPort=${appiumPort} \\
-                                                              -Djenkins.systemPort=${device.systemPort} \\
-                                                              -Dandroid.udid="${udid}" \\
-                                                              -Dandroid.systemPort=${device.systemPort} \\
-                                                              -Dallure.results.directory=target/allure-results-${udid}
-                                                        """
+                                                        mvnExit = sh(
+                                                            script: """
+                                                                set +e
+                                                                mvn clean test \\
+                                                                  -DsuiteXmlFile=testng-jenkins.xml \\
+                                                                  -Dplatform=android \\
+                                                                  -DappiumServer=${appiumUrl} \\
+                                                                  -Djenkins.branchName="${branchName}" \\
+                                                                  -Djenkins.slot=${slot} \\
+                                                                  -Djenkins.appiumPort=${appiumPort} \\
+                                                                  -Djenkins.systemPort=${device.systemPort} \\
+                                                                  -Dandroid.udid="${udid}" \\
+                                                                  -Dandroid.systemPort=${device.systemPort} \\
+                                                                  -Dallure.results.directory=target/allure-results-${udid}
+                                                                exit \$?
+                                                            """,
+                                                            returnStatus: true
+                                                        )
                                                     }
 
-                                                    resultStatus = 'PASSED'
+                                                    echo "Maven exit code for ${branchName}: ${mvnExit}"
+
+                                                    def resultCount = sh(
+                                                        script: "find target/allure-results-${udid} -type f -name '*-result.json' | wc -l | tr -d ' '",
+                                                        returnStdout: true
+                                                    ).trim()
+
+                                                    echo "Allure result count for ${branchName}: ${resultCount}"
+
+                                                    if (mvnExit == 0) {
+                                                        resultStatus = 'PASSED'
+                                                    } else {
+                                                        resultStatus = 'FAILED'
+                                                        failureMessage = "mvn clean test returned exit code ${mvnExit}"
+                                                    }
+
+                                                    if (mvnExit != 0 && resultCount == '0') {
+                                                        error("No Allure test result generated. mvn exit=${mvnExit}")
+                                                    }
                                                 } catch (err) {
                                                     resultStatus = 'FAILED'
                                                     failureMessage = err?.getMessage() ?: err?.toString() ?: 'Unknown error'
                                                     throw err
                                                 } finally {
                                                     def durationSec = ((System.currentTimeMillis() - startTs) / 1000L) as Long
+
+                                                    sh """
+                                                        set +e
+
+                                                        mkdir -p "target/allure-results-${udid}"
+
+                                                        cat > "target/allure-results-${udid}/environment.properties" <<EOF
+Platform=${platform}
+DeviceUDID=${udid}
+ShortUDID=${shortUdid}
+BranchName=${branchName}
+Slot=${slot}
+AppiumServer=${appiumUrl}
+AppiumPort=${appiumPort}
+Result=${resultStatus}
+DurationSec=${durationSec}
+MavenExit=${mvnExit}
+EOF
+
+                                                        mkdir -p "${mergeDir}"
+                                                        cp -R "target/allure-results-${udid}/." "${mergeDir}/" || true
+
+                                                        mkdir -p "${dashboardDir}"
+                                                        mkdir -p "${artifactDir}"
+                                                        cp -f appium-${platform}-${shortUdid}.log "${artifactDir}/" 2>/dev/null || true
+                                                        cp -R target/surefire-reports "${artifactDir}/surefire-reports" 2>/dev/null || true
+
+                                                        echo "===== DEBUG ${branchName} ====="
+                                                        echo "mergeDir=${mergeDir}"
+                                                        find "${mergeDir}" -maxdepth 1 -type f | sed 's#^#MERGED: #' || true
+                                                    """
+
+                                                    writeJSON(
+                                                        file: "${dashboardDir}/summary.json",
+                                                        json: device + [
+                                                            status      : resultStatus,
+                                                            durationSec : durationSec,
+                                                            errorMessage: failureMessage,
+                                                            mavenExit   : mvnExit
+                                                        ],
+                                                        pretty: 4
+                                                    )
 
                                                     sh """
                                                         set +e
@@ -397,41 +464,6 @@ pipeline {
                                                             lsof -ti tcp:${device.systemPort} | xargs kill -9 2>/dev/null || true
                                                         """
                                                     }
-
-                                                    sh """
-                                                        set +e
-
-                                                        mkdir -p "target/allure-results-${udid}"
-                                                        cat > "target/allure-results-${udid}/environment.properties" <<EOF
-Platform=${platform}
-DeviceUDID=${udid}
-ShortUDID=${shortUdid}
-BranchName=${branchName}
-Slot=${slot}
-AppiumServer=${appiumUrl}
-AppiumPort=${appiumPort}
-Result=${resultStatus}
-DurationSec=${durationSec}
-EOF
-
-                                                        mkdir -p "${mergeDir}"
-                                                        cp -R "target/allure-results-${udid}/." "${mergeDir}/" || true
-
-                                                        mkdir -p "${dashboardDir}"
-                                                        mkdir -p "${artifactDir}"
-                                                        cp -f appium-${platform}-${shortUdid}.log "${artifactDir}/" || true
-                                                        cp -R target/surefire-reports "${artifactDir}/surefire-reports" || true
-                                                    """
-
-                                                    writeJSON(
-                                                        file: "${dashboardDir}/summary.json",
-                                                        json: device + [
-                                                            status      : resultStatus,
-                                                            durationSec : durationSec,
-                                                            errorMessage: failureMessage
-                                                        ],
-                                                        pretty: 4
-                                                    )
                                                 }
                                             }
                                         }
@@ -469,16 +501,18 @@ EOF
                             def status = 'FAILED'
                             def durationSec = 0
                             def errorMessage = ''
+                            def mavenExit = ''
 
                             if (fileExists(summaryFile)) {
                                 def item = readJSON file: summaryFile
                                 status = item?.status == 'PASSED' ? 'PASSED' : 'FAILED'
                                 durationSec = item?.durationSec ?: 0
                                 errorMessage = item?.errorMessage ?: ''
+                                mavenExit = item?.mavenExit?.toString() ?: ''
                             }
 
                             def uuid = java.util.UUID.randomUUID().toString()
-                            def historyId = java.util.UUID.randomUUID().toString()
+                            def historyId = "device-summary-${d.branchName}"
                             def labels = [
                                 [name: 'parentSuite', value: 'Devices'],
                                 [name: 'suite', value: d.branchName],
@@ -497,8 +531,9 @@ EOF
                             }
 
                             def message = fileExists(summaryFile)
-                                ? "status=${status}, durationSec=${durationSec}, branch=${d.branchName}"
+                                ? "status=${status}, durationSec=${durationSec}, branch=${d.branchName}, mvnExit=${mavenExit}"
                                 : "status=FAILED, reason=no summary.json (failed before test result), branch=${d.branchName}"
+
                             if (errorMessage?.trim()) {
                                 message = "${message}, reason=${errorMessage}"
                             }
@@ -571,7 +606,7 @@ EOF
             }
         }
 
-        stage('Aggregate Allure results') {
+        stage('Aggregate Allure Results') {
             steps {
                 withEnv([
                     "HOME=${env.USER_HOME}",
@@ -589,24 +624,26 @@ EOF
                           exit 0
                         fi
 
-                        echo "===== MERGE ALLURE RESULTS (FIXED) ====="
+                        echo "===== MERGE ALLURE RESULTS ====="
 
-                        # Giữ nguyên tên file result/attachment để source trong *-result.json
-                        # vẫn map đúng sang file screenshot attachment.
                         find allure-merge -type f ! -name 'environment.properties' 2>/dev/null | while IFS= read -r f; do
                           [ -f "$f" ] || continue
                           cp -f "$f" allure-combined/ || true
                         done
 
                         total_devices=$(find allure-merge -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')
+                        total_results=$(find allure-combined -type f -name '*-result.json' | wc -l | tr -d ' ')
+
                         cat > allure-combined/environment.properties <<EOF
 ReportScope=combined
 TotalDevices=${total_devices}
+TotalResults=${total_results}
 GeneratedBy=Jenkins
 EOF
 
                         echo "[Allure] Combined file count: $(find allure-combined -type f | wc -l | tr -d ' ')"
-                        ls -la allure-combined | head -80 || true
+                        echo "[Allure] Result json count: $(find allure-combined -type f -name '*-result.json' | wc -l | tr -d ' ')"
+                        ls -la allure-combined | head -100 || true
                     '''
 
                     archiveArtifacts artifacts: 'allure-merge/**', allowEmptyArchive: true
@@ -658,7 +695,7 @@ EOF
                     script {
                         sh '''
                             mkdir -p device-dashboard
-                            echo "platform,udid,shortUdid,slot,appiumPort,extraPort1,extraPort2,status,durationSec,branchName" > device-dashboard/device-summary.csv
+                            echo "platform,udid,shortUdid,slot,appiumPort,extraPort1,extraPort2,status,durationSec,branchName,mavenExit" > device-dashboard/device-summary.csv
                         '''
 
                         def rows = []
@@ -673,9 +710,10 @@ EOF
                                 def extraPort1 = item.platform == 'ios' ? item.wdaLocalPort : item.systemPort
                                 def extraPort2 = item.platform == 'ios' ? item.mjpegServerPort : ''
                                 def branchName = item.branchName ?: "${item.platform}-${item.shortUdid}"
+                                def mavenExit = item.mavenExit ?: ''
 
                                 sh """
-                                    echo "${item.platform},${item.udid},${item.shortUdid},${item.slot},${item.appiumPort},${extraPort1},${extraPort2},${item.status},${item.durationSec},${branchName}" >> device-dashboard/device-summary.csv
+                                    echo "${item.platform},${item.udid},${item.shortUdid},${item.slot},${item.appiumPort},${extraPort1},${extraPort2},${item.status},${item.durationSec},${branchName},${mavenExit}" >> device-dashboard/device-summary.csv
                                 """
 
                                 rows << item
@@ -698,7 +736,7 @@ EOF
                         html += "<h1>Jenkins Device Dashboard</h1>"
                         html += "<p><a href='../reports/combined/index.html'>Open Combined Allure Report</a></p>"
                         html += "<table>"
-                        html += "<tr><th>Branch</th><th>Platform</th><th>UDID</th><th>Status</th><th>Duration(s)</th><th>Ports</th><th>Report</th></tr>"
+                        html += "<tr><th>Branch</th><th>Platform</th><th>UDID</th><th>Status</th><th>Duration(s)</th><th>Maven Exit</th><th>Ports</th><th>Report</th></tr>"
 
                         rows.each { item ->
                             def branchName = item.branchName ?: "${item.platform}-${item.shortUdid}"
@@ -706,6 +744,7 @@ EOF
                                 ? "appium=${item.appiumPort}<br>wda=${item.wdaLocalPort}<br>mjpeg=${item.mjpegServerPort}"
                                 : "appium=${item.appiumPort}<br>system=${item.systemPort}"
                             def statusClass = item.status == 'PASSED' ? 'ok' : 'bad'
+                            def mavenExit = item.mavenExit ?: ''
 
                             html += "<tr>"
                             html += "<td><code>${branchName}</code></td>"
@@ -713,6 +752,7 @@ EOF
                             html += "<td>${item.udid}</td>"
                             html += "<td class='${statusClass}'>${item.status}</td>"
                             html += "<td>${item.durationSec}</td>"
+                            html += "<td>${mavenExit}</td>"
                             html += "<td>${ports}</td>"
                             html += "<td><a href='../reports/device/${branchName}/index.html'>Open device report</a></td>"
                             html += "</tr>"
